@@ -1,13 +1,27 @@
-import React from 'react';
-import { useApp } from '../contexts/AppContext';
-import {
-  DollarSign,
-  Package,
+import React, { useContext, useState, useEffect, useMemo } from 'react';
+import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import { 
+  TrendingUp, 
+  Users, 
+  Package, 
+  DollarSign, 
+  Calendar, 
+  Clock,
+  RefreshCw,
   ShoppingCart,
-  Users,
-  TrendingUp,
-  AlertTriangle
+  Wrench,
+  FileText,
+  AlertTriangle,
+  CheckCircle2,
+  UserCheck,
+  BadgeCheck
 } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
+import { usePermissions } from '../hooks/usePermissions';
+import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
+import { db } from '../config/firebase';
+import { useApp } from '../contexts/AppContext';
 import {
   LineChart,
   Line,
@@ -27,7 +41,22 @@ import { ptBR } from 'date-fns/locale';
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'];
 
-export default function Dashboard() {
+const Dashboard = () => {
+  const { user, userProfile } = useAuth();
+  const { 
+    hasPermission,
+    canView,
+    canCreate,
+    canEdit,
+    canDelete,
+    userLevel,
+    isAdmin,
+    isVendedor,
+    isTecnico,
+    isMarketing,
+    isPosVenda
+  } = usePermissions();
+
   const { vendas, produtos, servicos, clientes } = useApp();
 
   // Calcular estatísticas
@@ -98,6 +127,88 @@ export default function Dashboard() {
       bgColor: 'bg-orange-100'
     }
   ];
+
+  // Teste de permissões para debug
+  const PermissionsDebug = () => (
+    <div className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 p-6 mb-6">
+      <h3 className="text-lg font-bold text-[#FF2C68] mb-4">🔐 Status de Permissões</h3>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-2">
+          <h4 className="text-white font-medium">Nível do Usuário</h4>
+          <div className="flex items-center space-x-2">
+            <UserCheck className="w-4 h-4 text-blue-400" />
+            <span className="text-white">{userLevel || 'Não definido'}</span>
+          </div>
+        </div>
+        
+        <div className="space-y-2">
+          <h4 className="text-white font-medium">Permissões de Visualização</h4>
+          <div className="space-y-1 text-sm">
+            <div className="flex justify-between">
+              <span className="text-white/60">Dashboard:</span>
+              <span className={hasPermission('dashboard') ? 'text-green-400' : 'text-red-400'}>
+                {hasPermission('dashboard') ? '✓' : '✗'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-white/60">Produtos:</span>
+              <span className={canView('products') ? 'text-green-400' : 'text-red-400'}>
+                {canView('products') ? '✓' : '✗'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-white/60">Clientes:</span>
+              <span className={canView('clients') ? 'text-green-400' : 'text-red-400'}>
+                {canView('clients') ? '✓' : '✗'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-white/60">Serviços:</span>
+              <span className={canView('services') ? 'text-green-400' : 'text-red-400'}>
+                {canView('services') ? '✓' : '✗'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-white/60">Vendas:</span>
+              <span className={canView('sales') ? 'text-green-400' : 'text-red-400'}>
+                {canView('sales') ? '✓' : '✗'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <h4 className="text-white font-medium">Permissões de Ação</h4>
+          <div className="space-y-1 text-sm">
+            <div className="flex justify-between">
+              <span className="text-white/60">Criar Clientes:</span>
+              <span className={canCreate('clients') ? 'text-green-400' : 'text-red-400'}>
+                {canCreate('clients') ? '✓' : '✗'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-white/60">Editar Clientes:</span>
+              <span className={canEdit('clients') ? 'text-green-400' : 'text-red-400'}>
+                {canEdit('clients') ? '✓' : '✗'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-white/60">Criar Produtos:</span>
+              <span className={canCreate('products') ? 'text-green-400' : 'text-red-400'}>
+                {canCreate('products') ? '✓' : '✗'}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-white/60">Editar Serviços:</span>
+              <span className={canEdit('services') ? 'text-green-400' : 'text-red-400'}>
+                {canEdit('services') ? '✓' : '✗'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -303,6 +414,10 @@ export default function Dashboard() {
           </table>
         </div>
       </div>
+
+      <PermissionsDebug />
     </div>
   );
-} 
+};
+
+export default Dashboard; 

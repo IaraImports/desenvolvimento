@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
+
 import { 
   Eye, 
   EyeOff, 
@@ -110,6 +111,8 @@ export default function Login() {
       [e.target.name]: e.target.value
     });
   };
+
+
 
   return (
     <div className="min-h-screen flex bg-dark-900">
@@ -225,6 +228,8 @@ export default function Login() {
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 translate-x-[-100%] group-hover:translate-x-[200%] transition-transform duration-1000" />
                 </div>
               </motion.button>
+
+
 
               {/* Link esqueci senha */}
               <motion.div 

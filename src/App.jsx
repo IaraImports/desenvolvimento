@@ -6,6 +6,7 @@ import { AnimatePresence } from 'framer-motion';
 // Contextos
 import { AppProvider } from './contexts/AppContext';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { PERFORMANCE_CONFIG } from './config/performance';
 
 // Componentes
 import Layout from './components/Layout';
@@ -13,15 +14,20 @@ import Login from './components/Login';
 import LoadingSpinner from './components/LoadingSpinner';
 import ProtectedRoute from './components/ProtectedRoute';
 
+
 // Páginas
 import Dashboard from './pages/Dashboard';
 import Produtos from './pages/Produtos';
 import Vendas from './pages/Vendas';
+import PDV from './pages/PDV';
+import Orcamento from './pages/Orcamento';
+import OrdemServico from './pages/OrdemServico';
 import Servicos from './pages/Servicos';
 import Financeiro from './pages/Financeiro';
 import Clientes from './pages/Clientes';
 import Relatorios from './pages/Relatorios';
 import Configuracoes from './pages/Configuracoes';
+import ChatInterno from './pages/ChatInterno';
 
 // Definir níveis de acesso para cada rota
 const ROUTE_PERMISSIONS = {
@@ -30,9 +36,10 @@ const ROUTE_PERMISSIONS = {
   servicos: ['ADMIN', 'TECNICO', 'POS_VENDA'],
   vendas: ['ADMIN', 'VENDEDOR'],
   financeiro: ['ADMIN', 'VENDEDOR'],
-  clientes: ['ADMIN', 'VENDEDOR', 'MARKETING', 'POS_VENDA'],
+  clientes: ['ADMIN', 'VENDEDOR', 'TECNICO', 'MARKETING', 'POS_VENDA'], // TECNICO adicionado
   relatorios: ['ADMIN', 'MARKETING'],
-  configuracoes: ['ADMIN']
+  configuracoes: ['ADMIN'],
+  chat: ['ADMIN', 'VENDEDOR', 'TECNICO', 'MARKETING', 'POS_VENDA']
 };
 
 // Componente principal do app
@@ -92,6 +99,30 @@ function AppRoutes() {
               } 
             />
             <Route 
+              path="/vendas/pdv" 
+              element={
+                <ProtectedRoute allowedLevels={ROUTE_PERMISSIONS.vendas}>
+                  <PDV />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/vendas/orcamento" 
+              element={
+                <ProtectedRoute allowedLevels={ROUTE_PERMISSIONS.vendas}>
+                  <Orcamento />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/vendas/os" 
+              element={
+                <ProtectedRoute allowedLevels={['ADMIN', 'VENDEDOR', 'TECNICO']}>
+                  <OrdemServico />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path="/financeiro" 
               element={
                 <ProtectedRoute allowedLevels={ROUTE_PERMISSIONS.financeiro}>
@@ -123,6 +154,14 @@ function AppRoutes() {
                 </ProtectedRoute>
               } 
             />
+            <Route 
+              path="/chat" 
+              element={
+                <ProtectedRoute allowedLevels={ROUTE_PERMISSIONS.chat}>
+                  <ChatInterno />
+                </ProtectedRoute>
+              } 
+            />
             <Route path="/login" element={<Navigate to="/" replace />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
@@ -143,14 +182,14 @@ export default function App() {
           <Toaster
             position="top-right"
             toastOptions={{
-              duration: 4000,
+              duration: PERFORMANCE_CONFIG.TOAST_DURATION,
               style: {
                 background: '#1e293b',
                 color: '#ffffff',
                 border: '1px solid #334155',
                 borderRadius: '12px',
-                backdropFilter: 'blur(20px)',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+                backdropFilter: 'blur(10px)', // Reduzido para melhor performance
+                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.2)', // Reduzido
               },
               success: {
                 iconTheme: {
@@ -165,6 +204,7 @@ export default function App() {
                 },
               },
             }}
+            maxCount={PERFORMANCE_CONFIG.MAX_TOASTS}
           />
       </div>
       </Router>

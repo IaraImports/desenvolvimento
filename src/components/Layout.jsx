@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { NotificationProvider, NotificationPanel } from './NotificationSystem';
+import SystemMonitor from './SystemMonitor';
 import {
   Home,
   Package,
@@ -15,7 +17,6 @@ import {
   ChevronDown,
   MessageCircle,
   DollarSign,
-  Sparkles,
   TrendingUp,
   Shield,
   Zap,
@@ -34,7 +35,7 @@ const headerFloatingIcons = [
   { Icon: TrendingUp, delay: 3.2 },
   { Icon: Shield, delay: 4 },
   { Icon: Zap, delay: 4.8 },
-  { Icon: Sparkles, delay: 5.6 }
+  { Icon: MessageCircle, delay: 5.6 }
 ];
 
 const menuItems = [
@@ -44,6 +45,7 @@ const menuItems = [
   { name: 'Vendas', icon: ShoppingCart, path: '/vendas' },
   { name: 'Financeiro', icon: DollarSign, path: '/financeiro' },
   { name: 'Clientes', icon: Users, path: '/clientes' },
+  { name: 'Chat Interno', icon: MessageCircle, path: '/chat' },
   { name: 'Relatórios', icon: BarChart3, path: '/relatorios' },
   { name: 'Configurações', icon: Settings, path: '/configuracoes' }
 ];
@@ -59,8 +61,42 @@ export default function Layout({ children }) {
   const navigate = useNavigate();
   const location = useLocation();
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showChatModal, setShowChatModal] = useState(false);
   const [showSalesMenu, setShowSalesMenu] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
+  const [userDropdownPosition, setUserDropdownPosition] = useState({ top: 0, right: 0 });
+  const salesButtonRef = useRef(null);
+  const userButtonRef = useRef(null);
+
+  return (
+    <NotificationProvider>
+      <LayoutContent 
+        user={user}
+        userProfile={userProfile}
+        logout={logout}
+        navigate={navigate}
+        location={location}
+        showUserMenu={showUserMenu}
+        setShowUserMenu={setShowUserMenu}
+        showSalesMenu={showSalesMenu}
+        setShowSalesMenu={setShowSalesMenu}
+        dropdownPosition={dropdownPosition}
+        setDropdownPosition={setDropdownPosition}
+        userDropdownPosition={userDropdownPosition}
+        setUserDropdownPosition={setUserDropdownPosition}
+        salesButtonRef={salesButtonRef}
+        userButtonRef={userButtonRef}
+        children={children}
+      />
+    </NotificationProvider>
+  );
+}
+
+function LayoutContent({ 
+  user, userProfile, logout, navigate, location, showUserMenu, setShowUserMenu,
+  showSalesMenu, setShowSalesMenu,
+  dropdownPosition, setDropdownPosition, userDropdownPosition, setUserDropdownPosition,
+  salesButtonRef, userButtonRef, children
+}) {
 
   const handleLogout = async () => {
     try {
@@ -73,11 +109,33 @@ export default function Layout({ children }) {
 
   const isActive = (path) => location.pathname === path;
 
+  const toggleSalesMenu = () => {
+    if (!showSalesMenu && salesButtonRef.current) {
+      const rect = salesButtonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 8,
+        left: rect.left
+      });
+    }
+    setShowSalesMenu(!showSalesMenu);
+  };
+
+  const toggleUserMenu = () => {
+    if (!showUserMenu && userButtonRef.current) {
+      const rect = userButtonRef.current.getBoundingClientRect();
+      setUserDropdownPosition({
+        top: rect.bottom + 8,
+        right: window.innerWidth - rect.right
+      });
+    }
+    setShowUserMenu(!showUserMenu);
+  };
+
   return (
     <div className="min-h-screen bg-[#0D0C0C]">
       {/* CABEÇALHO LUXUOSO */}
       <motion.header 
-        className="relative h-24 bg-[#FF2C68] overflow-hidden z-40"
+        className="relative h-24 bg-[#FF2C68] overflow-hidden z-[9999990]"
         initial={{ opacity: 0, y: -50 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
@@ -197,7 +255,8 @@ export default function Layout({ children }) {
             {/* Botão de Vendas Rápido */}
             <div className="relative">
               <motion.button
-                onClick={() => setShowSalesMenu(!showSalesMenu)}
+                ref={salesButtonRef}
+                onClick={toggleSalesMenu}
                 className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg transition-all duration-300 group flex items-center space-x-2"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
@@ -214,81 +273,40 @@ export default function Layout({ children }) {
                 )}
               </motion.button>
 
-              {/* Dropdown de Vendas */}
-              <AnimatePresence>
-                {showSalesMenu && (
-                  <>
-                    <div 
-                      className="fixed inset-0 z-[99997]" 
-                      onClick={() => setShowSalesMenu(false)}
-                    />
-                    <motion.div
-                      className="absolute right-0 top-16 w-80 bg-[#0D0C0C] rounded-2xl border border-green-500 shadow-2xl overflow-hidden z-[99998]"
-                      initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <div className="p-4 bg-green-500/10 border-b border-green-500/30">
-                        <h3 className="text-lg font-bold text-white flex items-center space-x-2">
-                          <CreditCard className="w-5 h-5 text-green-400" />
-                          <span>Acesso Rápido de Vendas</span>
-                        </h3>
-                        <p className="text-white/60 text-sm mt-1">Escolha uma ação de venda</p>
-                      </div>
-
-                      <div className="p-2">
-                        {salesQuickOptions.map((option, index) => (
-                          <motion.button
-                            key={option.name}
-                            onClick={() => {
-                              setShowSalesMenu(false);
-                              navigate(option.path);
-                            }}
-                            className="w-full flex items-center space-x-4 px-4 py-4 rounded-xl text-white/70 hover:text-white hover:bg-[#0D0C0C]/50 transition-all duration-200 group"
-                            initial={{ opacity: 0, x: -20 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ duration: 0.2, delay: index * 0.1 }}
-                            whileHover={{ scale: 1.02 }}
-                          >
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center bg-gray-500/20 group-hover:bg-gray-500/30 transition-colors`}>
-                              <option.icon className={`w-5 h-5 ${option.color}`} />
-                            </div>
-                            <div className="flex-1 text-left">
-                              <p className="font-medium text-white group-hover:text-green-400 transition-colors">
-                                {option.name}
-                              </p>
-                              <p className="text-xs text-white/50 group-hover:text-white/70 transition-colors">
-                                {option.desc}
-                              </p>
-                            </div>
-                            <ChevronDown className="w-4 h-4 text-white/30 rotate-[-90deg]" />
-                          </motion.button>
-                        ))}
-                      </div>
-                    </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
             </div>
 
             {/* Botão Chat Interno - Agora Roxo */}
             <motion.button
-              onClick={() => setShowChatModal(true)}
-              className="w-12 h-12 bg-purple-500/20 hover:bg-purple-500/30 rounded-xl border border-purple-500/30 backdrop-blur-sm flex items-center justify-center transition-all duration-300 group shadow-lg"
+              onClick={() => navigate('/chat')}
+              className={`rounded-xl border flex items-center space-x-2 px-4 py-3 transition-all duration-300 group shadow-lg ${
+                isActive('/chat') 
+                  ? 'bg-purple-600 border-purple-500 text-white'
+                  : 'bg-purple-600/20 border-purple-500/50 text-purple-300 hover:bg-purple-600 hover:text-white'
+              }`}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.3 }}
             >
-              <MessageCircle className="w-6 h-6 text-purple-400 group-hover:text-purple-300 transition-colors" />
+              <MessageCircle className="w-5 h-5 transition-colors" />
+              <span className="font-medium transition-colors">Chat Interno</span>
             </motion.button>
+
+            {/* Painel de Notificações */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.35 }}
+            >
+              <NotificationPanel />
+            </motion.div>
 
             {/* Menu do usuário */}
             <div className="relative">
               <motion.button
-                onClick={() => setShowUserMenu(!showUserMenu)}
+                ref={userButtonRef}
+                onClick={toggleUserMenu}
                 className="flex items-center space-x-3 px-4 py-3 rounded-xl bg-[#0D0C0C]/20 hover:bg-[#0D0C0C]/30 border border-[#0D0C0C]/30 backdrop-blur-sm transition-all duration-300 group shadow-lg"
                 whileHover={{ scale: 1.02 }}
                 initial={{ opacity: 0, x: 20 }}
@@ -311,70 +329,6 @@ export default function Layout({ children }) {
                 <ChevronDown className="w-4 h-4 text-[#0D0C0C]/70 group-hover:text-[#0D0C0C] transition-colors" />
               </motion.button>
 
-              {/* Dropdown do usuário */}
-              <AnimatePresence>
-                {showUserMenu && (
-                  <>
-                    {/* Overlay invisível para fechar o dropdown */}
-                    <div 
-                      className="fixed inset-0 z-[99998]" 
-                      onClick={() => setShowUserMenu(false)}
-                    />
-                    <motion.div
-                      className="absolute right-0 top-16 w-64 bg-[#0D0C0C] rounded-2xl border border-[#FF2C68] shadow-2xl overflow-hidden z-[99999]"
-                      initial={{ opacity: 0, scale: 0.95, y: -10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 0.95, y: -10 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                    {/* Perfil do usuário */}
-                    <div className="p-4 bg-[#FF2C68]/10 border-b border-[#FF2C68]/30">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-[#FF2C68] rounded-xl flex items-center justify-center">
-                          <User className="w-6 h-6 text-white" />
-                        </div>
-                        <div>
-                          <p className="font-semibold text-white">
-                            {user?.displayName || 'Usuário'}
-                          </p>
-                          <p className="text-sm text-white/60">{user?.email}</p>
-                          {userProfile?.level && (
-                            <span className="inline-block mt-1 text-xs px-2 py-1 bg-[#FF2C68]/20 text-[#FF2C68] rounded-lg">
-                              {userProfile.level}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Opções do menu */}
-                    <div className="p-2">
-                      <button
-                        onClick={() => {
-                          setShowUserMenu(false);
-                          navigate('/configuracoes');
-                        }}
-                        className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-white/70 hover:text-white hover:bg-[#FF2C68]/20 transition-all duration-200"
-                      >
-                        <Settings className="w-5 h-5" />
-                        <span>Configurações</span>
-                      </button>
-                      
-                      <button
-                        onClick={() => {
-                          setShowUserMenu(false);
-                          handleLogout();
-                        }}
-                        className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-[#FF2C68] hover:text-white hover:bg-[#FF2C68]/20 transition-all duration-200"
-                      >
-                        <LogOut className="w-5 h-5" />
-                        <span>Sair</span>
-                      </button>
-                    </div>
-                  </motion.div>
-                  </>
-                )}
-              </AnimatePresence>
             </div>
           </div>
         </div>
@@ -382,7 +336,7 @@ export default function Layout({ children }) {
 
       {/* MENU HORIZONTAL LUXUOSO */}
       <motion.nav 
-        className="bg-[#0D0C0C]/50 backdrop-blur-xl border-b border-[#FF2C68]/30 shadow-2xl z-30"
+        className="bg-[#0D0C0C]/50 backdrop-blur-xl border-b border-[#FF2C68]/30 shadow-2xl z-[9999989]"
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.2 }}
@@ -445,53 +399,137 @@ export default function Layout({ children }) {
         {children}
       </motion.main>
 
-      {/* MODAL DO CHAT INTERNO */}
+      {/* DROPDOWN DE VENDAS - POSITION FIXED */}
       <AnimatePresence>
-        {showChatModal && (
-          <motion.div 
-            className="fixed inset-0 bg-[#0D0C0C]/80 backdrop-blur-sm z-[50000] flex items-center justify-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowChatModal(false)}
-          >
-            <motion.div 
-              className="bg-[#0D0C0C] rounded-2xl p-8 w-full max-w-2xl border border-[#FF2C68] relative"
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        {showSalesMenu && (
+          <>
+            <div 
+              className="fixed inset-0 z-[99999990]" 
+              onClick={() => setShowSalesMenu(false)}
+            />
+            <motion.div
+              className="fixed w-80 bg-[#0D0C0C] rounded-2xl border border-green-500 shadow-2xl overflow-hidden z-[99999991]"
+              style={{
+                top: dropdownPosition.top,
+                left: dropdownPosition.left
+              }}
+              initial={{ opacity: 0, scale: 0.95, y: -10 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
+              exit={{ opacity: 0, scale: 0.95, y: -10 }}
+              transition={{ duration: 0.2 }}
             >
-              <button
-                onClick={() => setShowChatModal(false)}
-                className="absolute top-4 right-4 p-2 rounded-lg bg-[#FF2C68]/20 text-white/60 hover:text-white hover:bg-[#FF2C68]/30 transition-all duration-200"
-              >
-                ✕
-              </button>
+              <div className="p-4 bg-green-500/10 border-b border-green-500/30">
+                <h3 className="text-lg font-bold text-white flex items-center space-x-2">
+                  <CreditCard className="w-5 h-5 text-green-400" />
+                  <span>Acesso Rápido de Vendas</span>
+                </h3>
+                <p className="text-white/60 text-sm mt-1">Escolha uma ação de venda</p>
+              </div>
 
-              <div className="text-center">
-                <div className="w-16 h-16 bg-[#FF2C68] rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <MessageCircle className="w-8 h-8 text-white" />
-                </div>
-                <h2 className="text-2xl font-bold text-[#FF2C68] mb-4">Chat Interno</h2>
-                <p className="text-white/60 mb-6">
-                  Sistema de comunicação interna em desenvolvimento.
-                  <br />
-                  Em breve você poderá conversar com outros usuários da equipe!
-                </p>
-                
-                <div className="bg-[#FF2C68]/10 rounded-xl p-6 border border-[#FF2C68]/30">
-                  <div className="flex items-center justify-center space-x-2 text-[#FF2C68]">
-                    <Sparkles className="w-5 h-5 animate-pulse" />
-                    <span className="font-medium">Funcionalidade em desenvolvimento</span>
-                    <Sparkles className="w-5 h-5 animate-pulse" />
+              <div className="p-2">
+                {salesQuickOptions.map((option, index) => (
+                  <motion.button
+                    key={option.name}
+                    onClick={() => {
+                      setShowSalesMenu(false);
+                      navigate(option.path);
+                    }}
+                    className="w-full flex items-center space-x-4 px-4 py-4 rounded-xl text-white/70 hover:text-white hover:bg-[#0D0C0C]/50 transition-all duration-200 group"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ duration: 0.2, delay: index * 0.1 }}
+                    whileHover={{ scale: 1.02 }}
+                  >
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center bg-gray-500/20 group-hover:bg-gray-500/30 transition-colors`}>
+                      <option.icon className={`w-5 h-5 ${option.color}`} />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className="font-medium text-white group-hover:text-green-400 transition-colors">
+                        {option.name}
+                      </p>
+                      <p className="text-xs text-white/50 group-hover:text-white/70 transition-colors">
+                        {option.desc}
+                      </p>
+                    </div>
+                    <ChevronDown className="w-4 h-4 text-white/30 rotate-[-90deg]" />
+                  </motion.button>
+                ))}
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
+      {/* DROPDOWN DO USUÁRIO - POSITION FIXED */}
+      <AnimatePresence>
+        {showUserMenu && (
+          <>
+            <div 
+              className="fixed inset-0 z-[99999988]" 
+              onClick={() => setShowUserMenu(false)}
+            />
+            <motion.div
+              className="fixed w-64 bg-[#0D0C0C] rounded-2xl border border-[#FF2C68] shadow-2xl overflow-hidden z-[99999989]"
+              style={{
+                top: userDropdownPosition.top,
+                right: userDropdownPosition.right
+              }}
+              initial={{ opacity: 0, scale: 0.95, y: -10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -10 }}
+              transition={{ duration: 0.2 }}
+            >
+              {/* Perfil do usuário */}
+              <div className="p-4 bg-[#FF2C68]/10 border-b border-[#FF2C68]/30">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-[#FF2C68] rounded-xl flex items-center justify-center">
+                    <User className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-semibold text-white">
+                      {user?.displayName || 'Usuário'}
+                    </p>
+                    <p className="text-sm text-white/60">{user?.email}</p>
+                    {userProfile?.level && (
+                      <span className="inline-block mt-1 text-xs px-2 py-1 bg-[#FF2C68]/20 text-[#FF2C68] rounded-lg">
+                        {userProfile.level}
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
+
+              {/* Opções do menu */}
+              <div className="p-2">
+                <button
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    navigate('/configuracoes');
+                  }}
+                  className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-white/70 hover:text-white hover:bg-[#FF2C68]/20 transition-all duration-200"
+                >
+                  <Settings className="w-5 h-5" />
+                  <span>Configurações</span>
+                </button>
+                
+                <button
+                  onClick={() => {
+                    setShowUserMenu(false);
+                    handleLogout();
+                  }}
+                  className="w-full flex items-center space-x-3 px-4 py-3 rounded-xl text-[#FF2C68] hover:text-white hover:bg-[#FF2C68]/20 transition-all duration-200"
+                >
+                  <LogOut className="w-5 h-5" />
+                  <span>Sair</span>
+                </button>
+              </div>
             </motion.div>
-          </motion.div>
+          </>
         )}
       </AnimatePresence>
+
+      {/* Monitor do Sistema */}
+      <SystemMonitor />
     </div>
   );
 } 

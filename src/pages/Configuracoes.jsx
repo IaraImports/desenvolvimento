@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
+import { PERFORMANCE_CONFIG } from '../config/performance';
 import { 
   Users, Settings, Shield, Database, DollarSign, Building2,
   Plus, Edit3, Trash2, Save, X, Eye, EyeOff, Key, Download,
@@ -17,9 +18,11 @@ import {
   query, 
   orderBy,
   where,
-  onSnapshot
+  onSnapshot,
+  limit
 } from 'firebase/firestore';
-import { db } from '../config/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { db, auth } from '../config/firebase';
 import { toast } from 'react-hot-toast';
 
 const USER_LEVELS = ['ADMIN', 'VENDEDOR', 'TECNICO', 'MARKETING', 'POS_VENDA'];
@@ -63,12 +66,14 @@ export default function Configuracoes() {
   const [users, setUsers] = useState([]);
   const [suppliers, setSuppliers] = useState([]);
   const [commissions, setCommissions] = useState([]);
+  const [services, setServices] = useState([]);
   const [backupSettings, setBackupSettings] = useState({});
   
   // Modais
   const [showUserModal, setShowUserModal] = useState(false);
   const [showSupplierModal, setShowSupplierModal] = useState(false);
   const [showCommissionModal, setShowCommissionModal] = useState(false);
+  const [showServiceModal, setShowServiceModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
 
   // Formulários
@@ -107,9 +112,22 @@ export default function Configuracoes() {
     active: true
   });
 
+  const [serviceForm, setServiceForm] = useState({
+    name: '',
+    description: '',
+    category: '',
+    price: 0,
+    cost: 0,
+    labor: 0,
+    estimatedTime: '',
+    warranty: '',
+    active: true
+  });
+
   const tabs = [
     { id: 'usuarios', name: 'Usuários', icon: Users, color: 'text-blue-400' },
     { id: 'permissoes', name: 'Permissões', icon: Shield, color: 'text-green-400' },
+    { id: 'servicos', name: 'Serviços', icon: Settings, color: 'text-orange-400' },
     { id: 'comissoes', name: 'Comissões', icon: DollarSign, color: 'text-yellow-400' },
     { id: 'fornecedores', name: 'Fornecedores', icon: Building2, color: 'text-purple-400' },
     { id: 'seguranca', name: 'Segurança', icon: Lock, color: 'text-red-400' },
@@ -121,25 +139,31 @@ export default function Configuracoes() {
     if (activeTab === 'usuarios') loadUsers();
     if (activeTab === 'fornecedores') loadSuppliers();
     if (activeTab === 'comissoes') loadCommissions();
+    if (activeTab === 'servicos') loadServices();
   }, [activeTab]);
 
-  const loadUsers = async () => {
+  const loadUsers = useCallback(async () => {
     try {
       setLoading(true);
-      const q = query(collection(db, 'users'), orderBy('createdAt', 'desc'));
+      const q = query(
+        collection(db, 'users'), 
+        orderBy('createdAt', 'desc'),
+        limit(PERFORMANCE_CONFIG.MAX_FIREBASE_QUERY_LIMIT)
+      );
       const querySnapshot = await getDocs(q);
       const usersData = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
       setUsers(usersData);
+      console.log(`👥 Carregados ${usersData.length} usuários`);
     } catch (error) {
       console.error('Erro ao carregar usuários:', error);
       toast.error('Erro ao carregar usuários');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   const loadSuppliers = async () => {
     try {
@@ -172,6 +196,24 @@ export default function Configuracoes() {
     } catch (error) {
       console.error('Erro ao carregar comissões:', error);
       toast.error('Erro ao carregar comissões');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadServices = async () => {
+    try {
+      setLoading(true);
+      const q = query(collection(db, 'services'), orderBy('name'));
+      const querySnapshot = await getDocs(q);
+      const servicesData = querySnapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setServices(servicesData);
+    } catch (error) {
+      console.error('Erro ao carregar serviços:', error);
+      toast.error('Erro ao carregar serviços');
     } finally {
       setLoading(false);
     }
@@ -257,7 +299,7 @@ export default function Configuracoes() {
           createdBy: user.uid
         });
         
-        toast.info(`Comissão padrão criada para ${userLevel}: ${defaultComm.percentage}%`);
+        toast.success(`Comissão padrão criada para ${userLevel}: ${defaultComm.percentage}%`);
       }
     } catch (error) {
       console.error('Erro ao criar comissão do usuário:', error);
@@ -268,6 +310,13 @@ export default function Configuracoes() {
   const saveUser = async () => {
     try {
       setLoading(true);
+      
+      console.log('🔄 Iniciando criação de usuário:', {
+        email: userForm.email,
+        displayName: userForm.displayName,
+        level: userForm.level,
+        isEditing: !!editingItem
+      });
       
       // Validações
       if (!userForm.email || !userForm.displayName) {
@@ -280,30 +329,54 @@ export default function Configuracoes() {
         return;
       }
 
-      const userData = {
-        ...userForm,
-        updatedAt: new Date(),
-        updatedBy: user.uid
-      };
-
       let savedUserId;
 
       if (editingItem) {
+        // Editando usuário existente - apenas atualizar Firestore
+        const userData = {
+          ...userForm,
+          updatedAt: new Date(),
+          updatedBy: user.uid
+        };
+        
         // Remover senha do update se estiver vazia (não alterar)
         if (!userData.password) {
           delete userData.password;
         }
+        
         await updateDoc(doc(db, 'users', editingItem.id), userData);
         savedUserId = editingItem.id;
         toast.success('Usuário atualizado com sucesso!');
       } else {
-        const docRef = await addDoc(collection(db, 'users'), {
-          ...userData,
+        // Criando novo usuário - primeiro criar no Firebase Auth
+        console.log('🔄 Criando usuário no Firebase Auth:', userForm.email);
+        
+        const userCredential = await createUserWithEmailAndPassword(
+          auth, 
+          userForm.email, 
+          userForm.password
+        );
+        
+        console.log('✅ Usuário criado no Firebase Auth:', userCredential.user.uid);
+        
+        // Depois salvar no Firestore com o UID do Auth
+        const userData = {
+          uid: userCredential.user.uid,
+          email: userForm.email,
+          displayName: userForm.displayName,
+          level: userForm.level,
+          permissions: userForm.permissions || [],
+          active: userForm.active,
           createdAt: new Date(),
-          createdBy: user.uid
-        });
-        savedUserId = docRef.id;
-        toast.success('Usuário criado com sucesso!');
+          createdBy: user.uid,
+          updatedAt: new Date()
+        };
+        
+        await addDoc(collection(db, 'users'), userData);
+        savedUserId = userCredential.user.uid;
+        
+        console.log('✅ Dados salvos no Firestore');
+        toast.success('Usuário criado com sucesso! Agora pode fazer login.');
         
         // Criar comissão automática para vendedores e técnicos
         if (['VENDEDOR', 'TECNICO'].includes(userForm.level)) {
@@ -331,7 +404,30 @@ export default function Configuracoes() {
       }
     } catch (error) {
       console.error('Erro ao salvar usuário:', error);
-      toast.error('Erro ao salvar usuário');
+      
+      let message = 'Erro ao salvar usuário';
+      
+      // Tratar erros específicos do Firebase Auth
+      if (error.code) {
+        switch (error.code) {
+          case 'auth/email-already-in-use':
+            message = 'Este email já está em uso no sistema';
+            break;
+          case 'auth/invalid-email':
+            message = 'Email inválido';
+            break;
+          case 'auth/weak-password':
+            message = 'A senha deve ter pelo menos 6 caracteres';
+            break;
+          case 'auth/operation-not-allowed':
+            message = 'Operação não permitida. Verifique as configurações do Firebase';
+            break;
+          default:
+            message = `Erro do Firebase: ${error.message}`;
+        }
+      }
+      
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -421,6 +517,57 @@ export default function Configuracoes() {
     }
   };
 
+  // Funções CRUD para serviços
+  const saveService = async () => {
+    try {
+      setLoading(true);
+      
+      // Calcular margem de lucro
+      const profit = serviceForm.price - serviceForm.cost;
+      const profitMargin = serviceForm.price > 0 ? (profit / serviceForm.price) * 100 : 0;
+      
+      const serviceData = {
+        ...serviceForm,
+        profit,
+        profitMargin,
+        updatedAt: new Date(),
+        updatedBy: user.uid
+      };
+
+      if (editingItem) {
+        await updateDoc(doc(db, 'services', editingItem.id), serviceData);
+        toast.success('Serviço atualizado com sucesso!');
+      } else {
+        await addDoc(collection(db, 'services'), {
+          ...serviceData,
+          createdAt: new Date(),
+          createdBy: user.uid
+        });
+        toast.success('Serviço criado com sucesso!');
+      }
+
+      setShowServiceModal(false);
+      setEditingItem(null);
+      setServiceForm({
+        name: '',
+        description: '',
+        category: '',
+        price: 0,
+        cost: 0,
+        labor: 0,
+        estimatedTime: '',
+        warranty: '',
+        active: true
+      });
+      loadServices();
+    } catch (error) {
+      console.error('Erro ao salvar serviço:', error);
+      toast.error('Erro ao salvar serviço');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const deleteItem = async (collection_name, id, itemName) => {
     if (!confirm(`Tem certeza que deseja excluir ${itemName}?`)) return;
 
@@ -431,6 +578,7 @@ export default function Configuracoes() {
       if (collection_name === 'users') loadUsers();
       if (collection_name === 'suppliers') loadSuppliers();
       if (collection_name === 'commissions') loadCommissions();
+      if (collection_name === 'services') loadServices();
     } catch (error) {
       console.error('Erro ao excluir:', error);
       toast.error('Erro ao excluir item');
@@ -446,20 +594,20 @@ export default function Configuracoes() {
           <p className="text-white/60">Controle total dos usuários do sistema</p>
         </div>
         <motion.button
-                          onClick={() => {
-                  setEditingItem(null);
-                  setUserForm({
-                    email: '',
-                    displayName: '',
-                    password: '',
-                    level: 'VENDEDOR',
-                    permissions: [],
-                    active: true
-                  });
-                  setPasswordMode('manual');
-                  setShowPassword(false);
-                  setShowUserModal(true);
-                }}
+          onClick={() => {
+            setEditingItem(null);
+            setUserForm({
+              email: '',
+              displayName: '',
+              password: '',
+              level: 'VENDEDOR',
+              permissions: [],
+              active: true
+            });
+            setPasswordMode('manual');
+            setShowPassword(false);
+            setShowUserModal(true);
+          }}
           className="bg-[#FF2C68] hover:bg-[#FF2C68]/80 text-white px-6 py-3 rounded-xl flex items-center space-x-2 transition-all duration-200"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
@@ -483,7 +631,7 @@ export default function Configuracoes() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#FF2C68]/20">
-              {users.map((user_item) => (
+              {users.slice(0, PERFORMANCE_CONFIG.MAX_ITEMS_PER_PAGE).map((user_item) => (
                 <tr key={user_item.id} className="hover:bg-[#FF2C68]/5 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center space-x-3">
@@ -548,6 +696,14 @@ export default function Configuracoes() {
             <div className="text-center py-12">
               <Users className="w-12 h-12 text-white/30 mx-auto mb-4" />
               <p className="text-white/60">Nenhum usuário encontrado</p>
+            </div>
+          )}
+          
+          {users.length > PERFORMANCE_CONFIG.MAX_ITEMS_PER_PAGE && (
+            <div className="p-4 border-t border-[#FF2C68]/20 text-center">
+              <p className="text-white/60 text-sm">
+                📊 Mostrando {PERFORMANCE_CONFIG.MAX_ITEMS_PER_PAGE} de {users.length} usuários
+              </p>
             </div>
           )}
         </div>
@@ -1002,6 +1158,146 @@ export default function Configuracoes() {
     </div>
   );
 
+  const renderServicesTab = () => (
+    <div className="space-y-6">
+      {/* Header com botão adicionar */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h2 className="text-2xl font-bold text-white">Gerenciar Serviços</h2>
+          <p className="text-white/60">Configure serviços técnicos, custos e lucros</p>
+        </div>
+        <motion.button
+          onClick={() => {
+            setEditingItem(null);
+            setServiceForm({
+              name: '',
+              description: '',
+              category: '',
+              price: 0,
+              cost: 0,
+              labor: 0,
+              estimatedTime: '',
+              warranty: '',
+              active: true
+            });
+            setShowServiceModal(true);
+          }}
+          className="bg-[#FF2C68] hover:bg-[#FF2C68]/80 text-white px-6 py-3 rounded-xl flex items-center space-x-2 transition-all duration-200"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <Plus className="w-5 h-5" />
+          <span>Adicionar Serviço</span>
+        </motion.button>
+      </div>
+
+      {/* Lista de serviços */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+        {services.map((service) => (
+          <motion.div
+            key={service.id}
+            className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 p-6 hover:border-[#FF2C68]/50 transition-all duration-200"
+            whileHover={{ scale: 1.02 }}
+          >
+            {/* Header do Card */}
+            <div className="flex items-start justify-between mb-4">
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-white">{service.name}</h3>
+                {service.category && (
+                  <span className="inline-block px-2 py-1 bg-blue-500/20 text-blue-400 text-xs rounded mt-1">
+                    {service.category}
+                  </span>
+                )}
+              </div>
+              <div className="flex items-center space-x-2">
+                <span className={`w-3 h-3 rounded-full ${service.active ? 'bg-green-500' : 'bg-red-500'}`}></span>
+                <div className="flex space-x-1">
+                  <button
+                    onClick={() => {
+                      setEditingItem(service);
+                      setServiceForm(service);
+                      setShowServiceModal(true);
+                    }}
+                    className="p-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => deleteItem('services', service.id, service.name)}
+                    className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Descrição */}
+            {service.description && (
+              <p className="text-white/60 text-sm mb-4 line-clamp-2">{service.description}</p>
+            )}
+
+            {/* Informações */}
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span className="text-white/60">Tempo:</span>
+                  <p className="text-white">{service.estimatedTime || 'Não definido'}</p>
+                </div>
+                <div>
+                  <span className="text-white/60">Garantia:</span>
+                  <p className="text-white">{service.warranty || 'Não definido'}</p>
+                </div>
+              </div>
+
+              {/* Valores */}
+              <div className="bg-[#0D0C0C]/30 rounded-lg p-3 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-white/60">Preço:</span>
+                  <span className="text-green-400 font-medium">
+                    R$ {(service.price || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-white/60">Custo:</span>
+                  <span className="text-red-400 font-medium">
+                    R$ {(service.cost || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-white/60">Mão de Obra:</span>
+                  <span className="text-blue-400 font-medium">
+                    R$ {(service.labor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm pt-2 border-t border-white/10">
+                  <span className="text-white font-medium">Lucro:</span>
+                  <span className="text-[#FF2C68] font-bold">
+                    R$ {((service.price || 0) - (service.cost || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </span>
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className="text-white/60">Margem:</span>
+                  <span className="text-yellow-400 font-medium">
+                    {service.price > 0 ? (((service.price - service.cost) / service.price) * 100).toFixed(1) : 0}%
+                  </span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {services.length === 0 && (
+        <div className="text-center py-12">
+          <Settings className="w-12 h-12 text-white/30 mx-auto mb-4" />
+          <p className="text-white/60 text-lg">Nenhum serviço cadastrado</p>
+          <p className="text-white/40 text-sm mt-2">Comece criando seu primeiro serviço técnico</p>
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -1046,10 +1342,11 @@ export default function Configuracoes() {
           exit={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.3 }}
         >
-          {activeTab === 'usuarios' && renderUsersTab()}
-          {activeTab === 'permissoes' && renderPermissionsTab()}
-          {activeTab === 'comissoes' && renderCommissionsTab()}
-          {activeTab === 'fornecedores' && renderSuppliersTab()}
+                      {activeTab === 'usuarios' && renderUsersTab()}
+            {activeTab === 'permissoes' && renderPermissionsTab()}
+            {activeTab === 'servicos' && renderServicesTab()}
+            {activeTab === 'comissoes' && renderCommissionsTab()}
+            {activeTab === 'fornecedores' && renderSuppliersTab()}
           {activeTab === 'seguranca' && (
             <div className="text-center py-12">
               <Lock className="w-12 h-12 text-[#FF2C68] mx-auto mb-4" />
@@ -1492,6 +1789,22 @@ export default function Configuracoes() {
                   )}
                 </div>
 
+                {/* Informação sobre o processo */}
+                {!editingItem && (
+                  <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4">
+                    <h4 className="text-blue-400 font-medium mb-2 flex items-center">
+                      <AlertTriangle className="w-4 h-4 mr-2" />
+                      Processo de Criação de Usuário
+                    </h4>
+                    <div className="text-blue-300 text-sm space-y-1">
+                      <p>• ✅ Cria conta no Firebase Authentication</p>
+                      <p>• ✅ Salva perfil e permissões no Firestore</p>
+                      <p>• ✅ Configura comissões automáticas (se aplicável)</p>
+                      <p>• ✅ Usuário pode fazer login imediatamente</p>
+                    </div>
+                  </div>
+                )}
+
                 {/* Nível e Status */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
@@ -1573,6 +1886,197 @@ export default function Configuracoes() {
                     <span>{loading ? 'Salvando...' : 'Salvar'}</span>
                   </button>
                 </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de Serviço */}
+      <AnimatePresence>
+        {showServiceModal && (
+          <motion.div
+            className="fixed inset-0 bg-[#0D0C0C]/80 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setShowServiceModal(false)}
+          >
+            <motion.div
+              className="bg-[#0D0C0C] rounded-2xl p-8 w-full max-w-3xl border border-[#FF2C68] relative max-h-[90vh] overflow-y-auto"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                onClick={() => setShowServiceModal(false)}
+                className="absolute top-4 right-4 p-2 rounded-lg bg-[#FF2C68]/20 text-white/60 hover:text-white hover:bg-[#FF2C68]/30 transition-all duration-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-[#FF2C68]">
+                  {editingItem ? 'Editar Serviço' : 'Novo Serviço'}
+                </h2>
+                <p className="text-white/60">Configure os dados do serviço técnico</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Coluna 1 - Dados Básicos */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-white font-medium mb-2">Nome do Serviço *</label>
+                    <input
+                      type="text"
+                      value={serviceForm.name}
+                      onChange={(e) => setServiceForm({...serviceForm, name: e.target.value})}
+                      className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
+                      placeholder="Ex: Troca de Tela"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-white font-medium mb-2">Categoria</label>
+                    <input
+                      type="text"
+                      value={serviceForm.category}
+                      onChange={(e) => setServiceForm({...serviceForm, category: e.target.value})}
+                      className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
+                      placeholder="Ex: Tela, Bateria, Software"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-white font-medium mb-2">Descrição</label>
+                    <textarea
+                      value={serviceForm.description}
+                      onChange={(e) => setServiceForm({...serviceForm, description: e.target.value})}
+                      className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
+                      placeholder="Descrição detalhada do serviço"
+                      rows="3"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-white font-medium mb-2">Tempo Estimado</label>
+                    <input
+                      type="text"
+                      value={serviceForm.estimatedTime}
+                      onChange={(e) => setServiceForm({...serviceForm, estimatedTime: e.target.value})}
+                      className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
+                      placeholder="Ex: 2 horas, 1 dia"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-white font-medium mb-2">Garantia</label>
+                    <input
+                      type="text"
+                      value={serviceForm.warranty}
+                      onChange={(e) => setServiceForm({...serviceForm, warranty: e.target.value})}
+                      className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
+                      placeholder="Ex: 90 dias, 6 meses"
+                    />
+                  </div>
+                </div>
+
+                {/* Coluna 2 - Valores */}
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-white font-medium mb-2">Preço de Venda (R$)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={serviceForm.price}
+                      onChange={(e) => setServiceForm({...serviceForm, price: parseFloat(e.target.value) || 0})}
+                      className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-white font-medium mb-2">Custo de Peças (R$)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={serviceForm.cost}
+                      onChange={(e) => setServiceForm({...serviceForm, cost: parseFloat(e.target.value) || 0})}
+                      className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-white font-medium mb-2">Mão de Obra (R$)</label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={serviceForm.labor}
+                      onChange={(e) => setServiceForm({...serviceForm, labor: parseFloat(e.target.value) || 0})}
+                      className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
+                      placeholder="0.00"
+                    />
+                  </div>
+
+                  {/* Cálculos Automáticos */}
+                  <div className="bg-[#0D0C0C]/30 border border-[#FF2C68]/20 rounded-xl p-4 space-y-2">
+                    <h4 className="text-white font-medium mb-3">Cálculos Automáticos</h4>
+                    
+                    <div className="flex justify-between text-sm">
+                      <span className="text-white/60">Lucro Bruto:</span>
+                      <span className="text-green-400 font-medium">
+                        R$ {(serviceForm.price - serviceForm.cost).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                    
+                    <div className="flex justify-between text-sm">
+                      <span className="text-white/60">Margem de Lucro:</span>
+                      <span className="text-blue-400 font-medium">
+                        {serviceForm.price > 0 ? (((serviceForm.price - serviceForm.cost) / serviceForm.price) * 100).toFixed(1) : 0}%
+                      </span>
+                    </div>
+                    
+                    <div className="flex justify-between text-sm pt-2 border-t border-white/10">
+                      <span className="text-white font-medium">Total do Serviço:</span>
+                      <span className="text-[#FF2C68] font-bold">
+                        R$ {serviceForm.price.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      checked={serviceForm.active}
+                      onChange={(e) => setServiceForm({...serviceForm, active: e.target.checked})}
+                      className="w-5 h-5 text-[#FF2C68] bg-[#0D0C0C] border-[#FF2C68]/30 rounded focus:ring-[#FF2C68] focus:ring-2"
+                    />
+                    <span className="text-white">Serviço ativo</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Botões */}
+              <div className="flex justify-end space-x-4 pt-6">
+                <button
+                  onClick={() => setShowServiceModal(false)}
+                  className="px-6 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 text-white rounded-xl hover:bg-[#0D0C0C]/70 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={saveService}
+                  disabled={loading}
+                  className="px-6 py-3 bg-[#FF2C68] text-white rounded-xl hover:bg-[#FF2C68]/80 transition-colors disabled:opacity-50 flex items-center space-x-2"
+                >
+                  {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  <span>{loading ? 'Salvando...' : 'Salvar'}</span>
+                </button>
               </div>
             </motion.div>
           </motion.div>

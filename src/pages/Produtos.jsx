@@ -22,9 +22,41 @@ import {
   getDownloadURL 
 } from 'firebase/storage';
 import { db, storage } from '../config/firebase';
+import { usePermissions } from '../hooks/usePermissions';
 import { toast } from 'react-hot-toast';
 
 export default function Produtos() {
+  const { 
+    canView, 
+    canCreate, 
+    canEdit, 
+    canDelete,
+    hasPermission
+  } = usePermissions();
+  
+  // Verificar permissões de produtos
+  const canViewProducts = canView('products');
+  const canCreateProducts = canCreate('products');
+  const canEditProducts = canEdit('products');
+  const canDeleteProducts = canDelete('products');
+
+  // Verificar se tem permissão para acessar esta página
+  if (!canViewProducts) {
+    return (
+      <div className="min-h-screen bg-gradient-luxury flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold text-white mb-4">Acesso Negado</h1>
+          <p className="text-white/60 mb-6">
+            Você não tem permissão para visualizar produtos.
+          </p>
+          <p className="text-white/40 text-sm">
+            Entre em contato com o administrador para solicitar acesso.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
   const [produtos, setProdutos] = useState([]);
   const [fornecedores, setFornecedores] = useState([]);
   const [loading, setLoading] = useState(false);

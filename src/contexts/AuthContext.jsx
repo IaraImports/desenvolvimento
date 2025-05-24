@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { onAuthStateChanged, updateProfile } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, signInWithEmail, signUpWithEmail, signInWithGoogle, logOut, db } from '../config/firebase';
+import { checkAndCreateUserDoc } from '../utils/checkUser';
 import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
@@ -203,10 +204,42 @@ export function AuthProvider({ children }) {
   // Monitorar mudanças no estado de autenticação
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      setUser(user);
       if (user) {
-        await loadUserProfile(user.uid);
+        try {
+          // Verificar se o usuário existe no sistema
+          const userProfile = await checkAndCreateUserDoc(user);
+          
+          if (userProfile) {
+            // Usuário autorizado
+            setUser(user);
+            setUserProfile(userProfile);
+            console.log('✅ Usuário autenticado:', {
+              email: user.email,
+              level: userProfile.level,
+              displayName: userProfile.displayName
+            });
+          } else {
+            // Usuário não autorizado - fazer logout
+            console.warn('⚠️ Usuário não autorizado, fazendo logout...');
+            await logOut();
+            setUser(null);
+            setUserProfile(null);
+            toast.error('Usuário não autorizado no sistema', {
+              style: {
+                background: '#1e293b',
+                color: '#ffffff',
+                border: '1px solid #ef4444',
+              },
+            });
+          }
+        } catch (error) {
+          console.error('❌ Erro ao verificar perfil do usuário:', error);
+          // Em caso de erro, manter o usuário logado mas sem perfil
+          setUser(user);
+          setUserProfile(null);
+        }
       } else {
+        setUser(null);
         setUserProfile(null);
       }
       setLoading(false);
