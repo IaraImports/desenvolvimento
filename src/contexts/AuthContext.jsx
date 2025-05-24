@@ -208,35 +208,40 @@ export function AuthProvider({ children }) {
         try {
           // Verificar se o usuário existe no sistema
           const userProfile = await checkAndCreateUserDoc(user);
+          setUser(user);
+          setUserProfile(userProfile);
           
-          if (userProfile) {
-            // Usuário autorizado
-            setUser(user);
-            setUserProfile(userProfile);
-            console.log('✅ Usuário autenticado:', {
-              email: user.email,
-              level: userProfile.level,
-              displayName: userProfile.displayName
-            });
-          } else {
-            // Usuário não autorizado - fazer logout
-            console.warn('⚠️ Usuário não autorizado, fazendo logout...');
-            await logOut();
-            setUser(null);
-            setUserProfile(null);
-            toast.error('Usuário não autorizado no sistema', {
-              style: {
-                background: '#1e293b',
-                color: '#ffffff',
-                border: '1px solid #ef4444',
-              },
-            });
-          }
+          console.log('✅ Usuário autenticado:', {
+            email: user.email,
+            level: userProfile?.level,
+            permissions: userProfile?.permissions?.length || 0
+          });
+          
         } catch (error) {
           console.error('❌ Erro ao verificar perfil do usuário:', error);
-          // Em caso de erro, manter o usuário logado mas sem perfil
+          
+          // Em caso de erro, não bloquear completamente
+          // Criar um perfil básico temporário para permitir acesso
+          const fallbackProfile = {
+            uid: user.uid,
+            email: user.email,
+            displayName: user.displayName || user.email.split('@')[0],
+            level: 'TECNICO', // Nível básico como fallback
+            isActive: true,
+            permissions: [
+              'dashboard',
+              'products.view',
+              'services.view',
+              'clients.view',
+              'chat'
+            ],
+            isFallback: true // Flag para indicar que é um perfil temporário
+          };
+          
           setUser(user);
-          setUserProfile(null);
+          setUserProfile(fallbackProfile);
+          
+          console.log('⚠️ Usando perfil de fallback para:', user.email);
         }
       } else {
         setUser(null);

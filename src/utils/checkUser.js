@@ -63,30 +63,29 @@ export const checkAndCreateUserDoc = async (user) => {
     const userDoc = await getDoc(userDocRef);
     
     if (!userDoc.exists()) {
-      // Usuário novo - criar com nível básico e permissões limitadas
+      // Verificar se é o primeiro usuário ou um email de admin
+      const adminEmails = ['admin@admin.com', 'douglas@admin.com']; // Adicione emails de admin aqui
+      const isFirstAdmin = adminEmails.includes(user.email.toLowerCase());
+      
+      // Usuário novo - definir nível baseado no email
       const userData = {
         uid: user.uid,
         email: user.email,
         displayName: user.displayName || user.email.split('@')[0],
-        level: 'GUEST', // Nível padrão para novos usuários
-        isActive: false, // Requer ativação pelo admin
+        level: isFirstAdmin ? 'ADMIN' : 'TECNICO', // Admin para emails especiais, TECNICO como padrão
+        isActive: isFirstAdmin ? true : true, // Ativar automaticamente (o admin pode desativar depois)
         isOnline: true,
         createdAt: new Date(),
         updatedAt: new Date(),
-        permissions: ['dashboard'], // Apenas dashboard por padrão
-        needsApproval: true // Flag para indicar que precisa de aprovação
+        permissions: getDefaultPermissions(isFirstAdmin ? 'ADMIN' : 'TECNICO'),
+        needsApproval: !isFirstAdmin // Apenas não-admins precisam de aprovação posterior
       };
       
       await setDoc(userDocRef, userData);
-      console.log('Documento do usuário criado com nível GUEST');
+      console.log(`Documento do usuário criado com nível ${userData.level}`);
       return userData;
     } else {
       const userData = userDoc.data();
-      
-      // Verificar se o usuário está ativo
-      if (!userData.isActive) {
-        throw new Error('Usuário não autorizado. Entre em contato com o administrador.');
-      }
       
       // Atualizar status online
       await setDoc(userDocRef, {
@@ -97,15 +96,17 @@ export const checkAndCreateUserDoc = async (user) => {
       
       // Se não tem permissões definidas, definir baseado no nível
       if (!userData.permissions || userData.permissions.length === 0) {
-        const defaultPermissions = getDefaultPermissions(userData.level);
+        const defaultPermissions = getDefaultPermissions(userData.level || 'TECNICO');
         await setDoc(userDocRef, {
           ...userData,
           permissions: defaultPermissions,
+          level: userData.level || 'TECNICO', // Define nível padrão se não existir
           updatedAt: new Date()
         }, { merge: true });
         
         return {
           ...userData,
+          level: userData.level || 'TECNICO',
           permissions: defaultPermissions
         };
       }

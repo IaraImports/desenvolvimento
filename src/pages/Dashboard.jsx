@@ -210,6 +210,75 @@ const Dashboard = () => {
     </div>
   );
 
+  // Debug de Permissões - Mostrar apenas para administradores
+  const renderPermissionsDebug = () => {
+    if (!isAdmin) return null;
+
+    return (
+      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-6">
+        <h3 className="text-lg font-bold text-yellow-400 mb-4 flex items-center space-x-2">
+          <BadgeCheck className="w-5 h-5" />
+          <span>Debug de Permissões</span>
+        </h3>
+        
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div>
+              <span className="text-white/60">Usuário:</span>
+              <p className="text-white font-medium">{userProfile?.email}</p>
+            </div>
+            <div>
+              <span className="text-white/60">Nível:</span>
+              <p className="text-white font-medium">{userProfile?.level}</p>
+            </div>
+            <div>
+              <span className="text-white/60">Permissões:</span>
+              <p className="text-white font-medium">{userProfile?.permissions?.length || 0}</p>
+            </div>
+            <div>
+              <span className="text-white/60">Status:</span>
+              <p className="text-white font-medium">
+                {userProfile?.isActive ? '✅ Ativo' : '❌ Inativo'}
+              </p>
+            </div>
+          </div>
+          
+          <div className="border-t border-yellow-500/30 pt-3">
+            <p className="text-white/60 text-sm mb-2">Verificações de Permissão:</p>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-xs">
+              <div className={`px-2 py-1 rounded ${canView('clients') ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                Clientes: {canView('clients') ? '✅' : '❌'}
+              </div>
+              <div className={`px-2 py-1 rounded ${canCreate('clients') ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                Criar Clientes: {canCreate('clients') ? '✅' : '❌'}
+              </div>
+              <div className={`px-2 py-1 rounded ${canView('products') ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                Produtos: {canView('products') ? '✅' : '❌'}
+              </div>
+              <div className={`px-2 py-1 rounded ${canView('services') ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                Serviços: {canView('services') ? '✅' : '❌'}
+              </div>
+              <div className={`px-2 py-1 rounded ${canView('sales') ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
+                Vendas: {canView('sales') ? '✅' : '❌'}
+              </div>
+              <div className={`px-2 py-1 rounded ${isTecnico ? 'bg-blue-500/20 text-blue-400' : 'bg-gray-500/20 text-gray-400'}`}>
+                É Técnico: {isTecnico ? '✅' : '❌'}
+              </div>
+            </div>
+          </div>
+          
+          {userProfile?.isFallback && (
+            <div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3">
+              <p className="text-orange-400 text-sm">
+                ⚠️ Este usuário está usando um perfil de fallback. Verifique as configurações no sistema.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Stats Cards */}
@@ -416,6 +485,7 @@ const Dashboard = () => {
       </div>
 
       <PermissionsDebug />
+      {renderPermissionsDebug()}
     </div>
   );
 };

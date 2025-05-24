@@ -6,7 +6,8 @@ import {
   Users, Settings, Shield, Database, DollarSign, Building2,
   Plus, Edit3, Trash2, Save, X, Eye, EyeOff, Key, Download,
   Upload, RefreshCw, AlertTriangle, Check, Star, UserCheck,
-  Lock, Unlock, Search, Filter, MoreVertical, Crown, UserX, Copy
+  Lock, Unlock, Search, Filter, MoreVertical, Crown, UserX, Copy,
+  UserPlus, UserCog, User
 } from 'lucide-react';
 import { 
   collection, 
@@ -19,11 +20,13 @@ import {
   orderBy,
   where,
   onSnapshot,
-  limit
+  limit,
+  setDoc
 } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { db, auth } from '../config/firebase';
 import { toast } from 'react-hot-toast';
+import { useDebounce } from '../hooks/useDebounce';
 
 const USER_LEVELS = ['ADMIN', 'VENDEDOR', 'TECNICO', 'MARKETING', 'POS_VENDA'];
 
@@ -54,7 +57,10 @@ const PERMISSIONS = {
   'users.manage': 'Gerenciar Usuários',
   'commissions.manage': 'Gerenciar Comissões',
   'suppliers.manage': 'Gerenciar Fornecedores',
-  'backup.manage': 'Gerenciar Backup/Segurança'
+  'backup.manage': 'Gerenciar Backup/Segurança',
+  'config.view': 'Visualizar Configurações',
+  'config.edit': 'Editar Configurações',
+  'chat': 'Acessar Chat'
 };
 
 export default function Configuracoes() {
@@ -124,14 +130,16 @@ export default function Configuracoes() {
     active: true
   });
 
+  // Estado para gerenciamento de usuários
+  const [usuarios, setUsuarios] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
   const tabs = [
-    { id: 'usuarios', name: 'Usuários', icon: Users, color: 'text-blue-400' },
-    { id: 'permissoes', name: 'Permissões', icon: Shield, color: 'text-green-400' },
-    { id: 'servicos', name: 'Serviços', icon: Settings, color: 'text-orange-400' },
-    { id: 'comissoes', name: 'Comissões', icon: DollarSign, color: 'text-yellow-400' },
-    { id: 'fornecedores', name: 'Fornecedores', icon: Building2, color: 'text-purple-400' },
-    { id: 'seguranca', name: 'Segurança', icon: Lock, color: 'text-red-400' },
-    { id: 'backup', name: 'Backup', icon: Database, color: 'text-cyan-400' }
+    { id: 'users', name: 'Usuários', icon: Users },
+    { id: 'permissions', name: 'Permissões', icon: Shield },
+    { id: 'commissions', name: 'Comissões', icon: DollarSign },
+    { id: 'system', name: 'Sistema', icon: Settings },
+    { id: 'admin', name: 'Administração', icon: UserCog } // Nova aba
   ];
 
   // Carregar dados
@@ -144,24 +152,14 @@ export default function Configuracoes() {
 
   const loadUsers = useCallback(async () => {
     try {
-      setLoading(true);
-      const q = query(
-        collection(db, 'users'), 
-        orderBy('createdAt', 'desc'),
-        limit(PERFORMANCE_CONFIG.MAX_FIREBASE_QUERY_LIMIT)
-      );
-      const querySnapshot = await getDocs(q);
-      const usersData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setUsers(usersData);
-      console.log(`👥 Carregados ${usersData.length} usuários`);
+      setLoadingUsers(true);
+      const usersSnap = await getDocs(collection(db, 'users'));
+      const usersList = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setUsuarios(usersList);
     } catch (error) {
       console.error('Erro ao carregar usuários:', error);
-      toast.error('Erro ao carregar usuários');
     } finally {
-      setLoading(false);
+      setLoadingUsers(false);
     }
   }, []);
 
@@ -585,6 +583,109 @@ export default function Configuracoes() {
     }
   };
 
+  const resetUserPermissions = async (userId, newLevel = 'TECNICO') => {
+    try {
+      const userRef = doc(db, 'users', userId);
+      
+      // Obter permissões padrão baseadas no nível
+      const getDefaultPermissions = (level) => {
+        switch (level) {
+          case 'ADMIN':
+            return [
+              'dashboard',
+              'products.view', 'products.create', 'products.edit', 'products.delete',
+              'clients.view', 'clients.create', 'clients.edit', 'clients.delete',
+              'services.view', 'services.create', 'services.edit', 'services.delete',
+              'sales.view', 'sales.create', 'sales.edit', 'sales.delete',
+              'financial.view', 'financial.create', 'financial.edit',
+              'reports.view', 'reports.export',
+              'config.view', 'config.edit',
+              'chat'
+            ];
+          case 'VENDEDOR':
+            return [
+              'dashboard',
+              'products.view',
+              'clients.view', 'clients.create', 'clients.edit',
+              'sales.view', 'sales.create', 'sales.edit',
+              'financial.view',
+              'chat'
+            ];
+          case 'TECNICO':
+            return [
+              'dashboard',
+              'products.view',
+              'services.view', 'services.create', 'services.edit',
+              'clients.view',
+              'chat'
+            ];
+          default:
+            return ['dashboard'];
+        }
+      };
+
+      await updateDoc(userRef, {
+        level: newLevel,
+        permissions: getDefaultPermissions(newLevel),
+        isActive: true,
+        updatedAt: new Date(),
+        updatedBy: user.uid
+      });
+
+      toast.success(`Permissões do usuário atualizadas para ${newLevel}`);
+      loadUsers();
+    } catch (error) {
+      console.error('Erro ao atualizar usuário:', error);
+      toast.error('Erro ao atualizar usuário');
+    }
+  };
+
+  const createEmergencyAdmin = async () => {
+    try {
+      const emergencyEmail = prompt('Digite o email para criar um admin de emergência:');
+      if (!emergencyEmail) return;
+
+      const emergencyPassword = prompt('Digite uma senha temporária (mínimo 6 caracteres):');
+      if (!emergencyPassword || emergencyPassword.length < 6) {
+        toast.error('Senha deve ter pelo menos 6 caracteres');
+        return;
+      }
+
+      // Criar usuário no Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, emergencyEmail, emergencyPassword);
+      const newUser = userCredential.user;
+
+      // Criar documento no Firestore
+      await setDoc(doc(db, 'users', newUser.uid), {
+        uid: newUser.uid,
+        email: emergencyEmail,
+        displayName: 'Admin Emergência',
+        level: 'ADMIN',
+        isActive: true,
+        permissions: [
+          'dashboard',
+          'products.view', 'products.create', 'products.edit', 'products.delete',
+          'clients.view', 'clients.create', 'clients.edit', 'clients.delete',
+          'services.view', 'services.create', 'services.edit', 'services.delete',
+          'sales.view', 'sales.create', 'sales.edit', 'sales.delete',
+          'financial.view', 'financial.create', 'financial.edit',
+          'reports.view', 'reports.export',
+          'config.view', 'config.edit',
+          'chat'
+        ],
+        createdAt: new Date(),
+        createdBy: user.uid,
+        isEmergencyAdmin: true
+      });
+
+      toast.success(`Admin de emergência criado: ${emergencyEmail}`);
+      loadUsers();
+    } catch (error) {
+      console.error('Erro ao criar admin de emergência:', error);
+      toast.error('Erro ao criar admin de emergência: ' + error.message);
+    }
+  };
+
   const renderUsersTab = () => (
     <div className="space-y-6">
       {/* Header com botão adicionar */}
@@ -631,7 +732,7 @@ export default function Configuracoes() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#FF2C68]/20">
-              {users.slice(0, PERFORMANCE_CONFIG.MAX_ITEMS_PER_PAGE).map((user_item) => (
+              {usuarios.slice(0, PERFORMANCE_CONFIG.MAX_ITEMS_PER_PAGE).map((user_item) => (
                 <tr key={user_item.id} className="hover:bg-[#FF2C68]/5 transition-colors">
                   <td className="px-6 py-4">
                     <div className="flex items-center space-x-3">
@@ -692,17 +793,17 @@ export default function Configuracoes() {
             </tbody>
           </table>
           
-          {users.length === 0 && (
+          {usuarios.length === 0 && (
             <div className="text-center py-12">
               <Users className="w-12 h-12 text-white/30 mx-auto mb-4" />
               <p className="text-white/60">Nenhum usuário encontrado</p>
             </div>
           )}
           
-          {users.length > PERFORMANCE_CONFIG.MAX_ITEMS_PER_PAGE && (
+          {usuarios.length > PERFORMANCE_CONFIG.MAX_ITEMS_PER_PAGE && (
             <div className="p-4 border-t border-[#FF2C68]/20 text-center">
               <p className="text-white/60 text-sm">
-                📊 Mostrando {PERFORMANCE_CONFIG.MAX_ITEMS_PER_PAGE} de {users.length} usuários
+                📊 Mostrando {PERFORMANCE_CONFIG.MAX_ITEMS_PER_PAGE} de {usuarios.length} usuários
               </p>
             </div>
           )}
@@ -758,7 +859,7 @@ export default function Configuracoes() {
           <div className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 p-6">
             <h3 className="text-xl font-bold text-white mb-4">Selecione um usuário para editar permissões</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {users.map((userItem) => (
+              {usuarios.map((userItem) => (
                 <motion.button
                   key={userItem.id}
                   onClick={() => {
@@ -843,8 +944,8 @@ export default function Configuracoes() {
 
   const renderCommissionsTab = () => {
     // Filtrar usuários que são vendedores ou técnicos
-    const vendedores = users.filter(u => u.level === 'VENDEDOR' && u.active);
-    const tecnicos = users.filter(u => u.level === 'TECNICO' && u.active);
+    const vendedores = usuarios.filter(u => u.level === 'VENDEDOR' && u.active);
+    const tecnicos = usuarios.filter(u => u.level === 'TECNICO' && u.active);
     
     return (
       <div className="space-y-6">
@@ -1298,6 +1399,137 @@ export default function Configuracoes() {
     </div>
   );
 
+  const renderAdminTab = () => (
+    <div className="space-y-8">
+      <div className="bg-[#0D0C0C]/30 border border-[#FF2C68]/20 rounded-xl p-6">
+        <h3 className="text-xl font-bold text-white mb-6 flex items-center space-x-2">
+          <AlertTriangle className="w-6 h-6 text-yellow-400" />
+          <span>Administração de Emergência</span>
+        </h3>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          {/* Criar Admin de Emergência */}
+          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-6">
+            <h4 className="text-lg font-bold text-red-400 mb-3">Criar Admin de Emergência</h4>
+            <p className="text-white/60 text-sm mb-4">
+              Crie um usuário administrador de emergência com acesso total ao sistema.
+            </p>
+            <button
+              onClick={createEmergencyAdmin}
+              className="w-full px-4 py-3 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center space-x-2"
+            >
+              <UserPlus className="w-5 h-5" />
+              <span>Criar Admin Emergência</span>
+            </button>
+          </div>
+
+          {/* Recarregar Usuários */}
+          <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-6">
+            <h4 className="text-lg font-bold text-blue-400 mb-3">Recarregar Sistema</h4>
+            <p className="text-white/60 text-sm mb-4">
+              Recarregue a lista de usuários e permissões do sistema.
+            </p>
+            <button
+              onClick={() => {
+                loadUsers();
+                toast.success('Sistema recarregado!');
+              }}
+              className="w-full px-4 py-3 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors flex items-center justify-center space-x-2"
+            >
+              <RefreshCw className="w-5 h-5" />
+              <span>Recarregar</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Lista de Usuários com Controles Admin */}
+      <div className="bg-[#0D0C0C]/30 border border-[#FF2C68]/20 rounded-xl p-6">
+        <h3 className="text-xl font-bold text-white mb-6">Gerenciar Usuários</h3>
+        
+        {loadingUsers ? (
+          <div className="text-center py-8">
+            <div className="w-8 h-8 border-4 border-[#FF2C68]/30 border-t-[#FF2C68] rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-white/60">Carregando usuários...</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {usuarios.map((usuario) => (
+              <div key={usuario.id} className="bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-[#FF2C68] rounded-xl flex items-center justify-center">
+                      <User className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h4 className="text-white font-medium">{usuario.displayName || usuario.email}</h4>
+                      <p className="text-white/60 text-sm">{usuario.email}</p>
+                      <div className="flex items-center space-x-2 mt-1">
+                        <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                          usuario.level === 'ADMIN' ? 'bg-red-500/20 text-red-400' :
+                          usuario.level === 'VENDEDOR' ? 'bg-green-500/20 text-green-400' :
+                          usuario.level === 'TECNICO' ? 'bg-blue-500/20 text-blue-400' :
+                          'bg-gray-500/20 text-gray-400'
+                        }`}>
+                          {usuario.level}
+                        </span>
+                        <span className={`px-2 py-1 rounded-lg text-xs ${
+                          usuario.isActive ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
+                        }`}>
+                          {usuario.isActive ? 'Ativo' : 'Inativo'}
+                        </span>
+                        {usuario.isFallback && (
+                          <span className="px-2 py-1 rounded-lg text-xs bg-yellow-500/20 text-yellow-400">
+                            Fallback
+                          </span>
+                        )}
+                        {usuario.isEmergencyAdmin && (
+                          <span className="px-2 py-1 rounded-lg text-xs bg-orange-500/20 text-orange-400">
+                            Emergência
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    {/* Botões de nível */}
+                    <select
+                      value={usuario.level}
+                      onChange={(e) => resetUserPermissions(usuario.id, e.target.value)}
+                      className="px-3 py-2 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg text-white text-sm focus:border-[#FF2C68] focus:outline-none"
+                    >
+                      <option value="ADMIN" className="bg-[#0D0C0C]">ADMIN</option>
+                      <option value="VENDEDOR" className="bg-[#0D0C0C]">VENDEDOR</option>
+                      <option value="TECNICO" className="bg-[#0D0C0C]">TECNICO</option>
+                      <option value="MARKETING" className="bg-[#0D0C0C]">MARKETING</option>
+                      <option value="POS_VENDA" className="bg-[#0D0C0C]">PÓS-VENDA</option>
+                    </select>
+                  </div>
+                </div>
+                
+                <div className="mt-3 pt-3 border-t border-[#FF2C68]/20">
+                  <p className="text-white/40 text-xs">
+                    Permissões: {usuario.permissions?.length || 0} | 
+                    Criado: {usuario.createdAt?.toDate?.()?.toLocaleDateString('pt-BR') || 'N/A'} |
+                    Último login: {usuario.lastLogin?.toDate?.()?.toLocaleDateString('pt-BR') || 'Nunca'}
+                  </p>
+                </div>
+              </div>
+            ))}
+            
+            {usuarios.length === 0 && (
+              <div className="text-center py-8">
+                <Users className="w-12 h-12 text-white/30 mx-auto mb-4" />
+                <p className="text-white/60">Nenhum usuário encontrado</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div className="space-y-8">
       {/* Header */}
@@ -1340,25 +1572,19 @@ export default function Configuracoes() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.3 }}
+          transition={{ duration: PERFORMANCE_CONFIG.ANIMATION_DURATION }}
+          className="flex-1"
         >
-                      {activeTab === 'usuarios' && renderUsersTab()}
-            {activeTab === 'permissoes' && renderPermissionsTab()}
-            {activeTab === 'servicos' && renderServicesTab()}
-            {activeTab === 'comissoes' && renderCommissionsTab()}
-            {activeTab === 'fornecedores' && renderSuppliersTab()}
-          {activeTab === 'seguranca' && (
+          {activeTab === 'users' && renderUsersTab()}
+          {activeTab === 'permissions' && renderPermissionsTab()}
+          {activeTab === 'commissions' && renderCommissionsTab()}
+          {activeTab === 'system' && (
             <div className="text-center py-12">
-              <Lock className="w-12 h-12 text-[#FF2C68] mx-auto mb-4" />
-              <p className="text-white">Seção de Segurança em desenvolvimento...</p>
+              <Settings className="w-12 h-12 text-white/30 mx-auto mb-4" />
+              <p className="text-white/60">Configurações do sistema em desenvolvimento</p>
             </div>
           )}
-          {activeTab === 'backup' && (
-            <div className="text-center py-12">
-              <Database className="w-12 h-12 text-[#FF2C68] mx-auto mb-4" />
-              <p className="text-white">Seção de Backup em desenvolvimento...</p>
-            </div>
-          )}
+          {activeTab === 'admin' && renderAdminTab()}
         </motion.div>
       </AnimatePresence>
 

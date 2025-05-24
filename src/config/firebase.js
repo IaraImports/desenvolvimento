@@ -3,16 +3,24 @@ import { getAuth, GoogleAuthProvider, signInWithEmailAndPassword, createUserWith
 import { getFirestore, collection, addDoc, getDocs, doc, updateDoc, deleteDoc, query, orderBy, where } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
-// Configuração do Firebase
+// Configuração do Firebase - usando variáveis de ambiente em produção
 const firebaseConfig = {
-  apiKey: "AIzaSyCx1wUZmMB9WjHNCwVxSy4js9puiIb98to",
-  authDomain: "appgestaoiara.firebaseapp.com",
-  projectId: "appgestaoiara",
-  storageBucket: "appgestaoiara.firebasestorage.app",
-  messagingSenderId: "281800566900",
-  appId: "1:281800566900:web:4fcb6a4ce12e391fc70921",
-  measurementId: "G-ET0H50Y5G5"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyCx1wUZmMB9WjHNCwVxSy4js9puiIb98to",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "appgestaoiara.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "appgestaoiara",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "appgestaoiara.firebasestorage.app",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "281800566900",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:281800566900:web:4fcb6a4ce12e391fc70921",
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID || "G-ET0H50Y5G5"
 };
+
+// Log para debug (apenas em desenvolvimento)
+if (import.meta.env.DEV) {
+  console.log('🔥 Firebase Config:', {
+    ...firebaseConfig,
+    apiKey: firebaseConfig.apiKey.substring(0, 10) + '...' // Mascarar API key no log
+  });
+}
 
 // Inicializar Firebase
 const app = initializeApp(firebaseConfig);
