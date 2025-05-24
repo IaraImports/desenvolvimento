@@ -676,923 +676,452 @@ export default function Produtos() {
   };
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Produtos</h1>
-          <p className="text-white/60 mt-2">Gerencie seu catálogo completo de produtos</p>
-        </div>
-        <div className="flex items-center space-x-3">
-          <motion.button
-            onClick={() => setShowCategoryEditor(true)}
-            className="bg-[#0D0C0C]/50 border border-[#FF2C68]/30 text-white px-4 py-3 rounded-xl hover:bg-[#0D0C0C]/70 transition-all duration-200 flex items-center space-x-2"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Settings className="w-4 h-4" />
-            <span>Categorias</span>
-          </motion.button>
-          
-          <motion.button
-            onClick={() => setShowQuickAdd(true)}
-            className="bg-blue-500/20 border border-blue-500/30 text-blue-400 px-4 py-3 rounded-xl hover:bg-blue-500/30 transition-all duration-200 flex items-center space-x-2"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <FileText className="w-4 h-4" />
-            <span>Cadastro Rápido</span>
-          </motion.button>
-          
-          <motion.button
-            onClick={() => setShowBulkAdd(true)}
-            className="bg-purple-500/20 border border-purple-500/30 text-purple-400 px-4 py-3 rounded-xl hover:bg-purple-500/30 transition-all duration-200 flex items-center space-x-2"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Layers className="w-4 h-4" />
-            <span>Cadastro em Lote</span>
-          </motion.button>
-          
-          <motion.button
-            onClick={() => {
-              setSelectedProduto(null);
-              resetForm();
-              setShowModal(true);
-            }}
-            className="bg-[#FF2C68] hover:bg-[#FF2C68]/80 text-white px-6 py-3 rounded-xl flex items-center space-x-2 transition-all duration-200"
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <Plus className="w-5 h-5" />
-            <span>Novo Produto</span>
-          </motion.button>
-        </div>
-      </div>
-
-      {/* Estatísticas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        <div className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-xl border border-[#FF2C68]/30 p-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-blue-500/20 rounded-lg flex items-center justify-center">
-              <Package className="w-5 h-5 text-blue-400" />
-            </div>
-            <div>
-              <p className="text-white/60 text-sm">Itens Cadastrados</p>
-              <p className="text-white font-bold text-xl">{stats.quantidadeItens}</p>
-            </div>
+    <div className="space-y-4 md:space-y-6">
+      {/* Header responsivo */}
+      <div className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 p-4 md:p-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center space-x-3">
+              <Package className="w-6 md:w-8 h-6 md:h-8 text-[#FF2C68]" />
+              <span>Produtos</span>
+            </h1>
+            <p className="text-white/60 mt-2 text-sm md:text-base">
+              Gerencie seu estoque de produtos
+            </p>
           </div>
-        </div>
 
-        <div className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-xl border border-[#FF2C68]/30 p-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
-              <Package className="w-5 h-5 text-purple-400" />
+          {/* Estatísticas rápidas */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 text-center">
+            <div className="bg-[#0D0C0C]/30 rounded-xl p-3">
+              <p className="text-blue-400 font-bold text-lg md:text-xl">{produtos.length}</p>
+              <p className="text-white/60 text-xs md:text-sm">Produtos</p>
             </div>
-            <div>
-              <p className="text-white/60 text-sm">Total em Estoque</p>
-              <p className="text-white font-bold text-xl">{stats.totalProdutos}</p>
+            <div className="bg-[#0D0C0C]/30 rounded-xl p-3">
+              <p className="text-green-400 font-bold text-lg md:text-xl">{stats.totalProdutos}</p>
+              <p className="text-white/60 text-xs md:text-sm">Estoque</p>
             </div>
-          </div>
-        </div>
-
-        <div className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-xl border border-[#FF2C68]/30 p-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-yellow-500/20 rounded-lg flex items-center justify-center">
-              <DollarSign className="w-5 h-5 text-yellow-400" />
-            </div>
-            <div>
-              <p className="text-white/60 text-sm">Valor Total Custo</p>
-              <p className="text-white font-bold text-xl">R$ {stats.valorTotalCusto.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-xl border border-[#FF2C68]/30 p-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-green-500/20 rounded-lg flex items-center justify-center">
-              <DollarSign className="w-5 h-5 text-green-400" />
-            </div>
-            <div>
-              <p className="text-white/60 text-sm">Valor Total Venda</p>
-              <p className="text-white font-bold text-xl">R$ {stats.valorTotalVenda.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-xl border border-[#FF2C68]/30 p-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-[#FF2C68]/20 rounded-lg flex items-center justify-center">
-              <Calculator className="w-5 h-5 text-[#FF2C68]" />
-            </div>
-            <div>
-              <p className="text-white/60 text-sm">Lucro Total</p>
-              <p className={`font-bold text-xl ${stats.lucroTotal >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                R$ {stats.lucroTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+            <div className="bg-[#0D0C0C]/30 rounded-xl p-3">
+              <p className="text-purple-400 font-bold text-lg md:text-xl">
+                R$ {(stats.valorTotalCusto / 1000).toFixed(0)}k
               </p>
+              <p className="text-white/60 text-xs md:text-sm">Custo</p>
+            </div>
+            <div className="bg-[#0D0C0C]/30 rounded-xl p-3">
+              <p className="text-orange-400 font-bold text-lg md:text-xl">
+                R$ {(stats.valorTotalVenda / 1000).toFixed(0)}k
+              </p>
+              <p className="text-white/60 text-xs md:text-sm">Venda</p>
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Filtros */}
-      <div className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 p-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        {/* Controles responsivos */}
+        <div className="mt-4 md:mt-6 space-y-4">
+          {/* Busca */}
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/40" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40 w-4 h-4 md:w-5 md:h-5" />
             <input
               type="text"
               placeholder="Buscar produtos..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
+              className="w-full bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl px-10 md:px-12 py-2 md:py-3 text-white placeholder-white/40 focus:outline-none focus:border-[#FF2C68] transition-colors text-sm md:text-base"
             />
           </div>
-          
-          <select
-            value={filterCategoria}
-            onChange={(e) => setFilterCategoria(e.target.value)}
-            className="px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white focus:border-[#FF2C68] focus:outline-none transition-colors"
-          >
-            <option value="" className="bg-[#0D0C0C]">Todas as categorias</option>
-            {categorias.map(categoria => (
-              <option key={categoria} value={categoria} className="bg-[#0D0C0C]">{categoria}</option>
-            ))}
-          </select>
 
-          <select
-            value={filterFornecedor}
-            onChange={(e) => setFilterFornecedor(e.target.value)}
-            className="px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white focus:border-[#FF2C68] focus:outline-none transition-colors"
-          >
-            <option value="" className="bg-[#0D0C0C]">Todos os fornecedores</option>
-            {fornecedores.map(fornecedor => (
-              <option key={fornecedor.id} value={fornecedor.id} className="bg-[#0D0C0C]">{fornecedor.name}</option>
-            ))}
-          </select>
+          {/* Controles inferiores */}
+          <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
+            {/* Filtros */}
+            <div className="flex flex-wrap gap-2">
+              <select
+                value={filterCategoria}
+                onChange={(e) => setFilterCategoria(e.target.value)}
+                className="bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg px-3 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-[#FF2C68]"
+              >
+                <option value="">Todas Categorias</option>
+                {categorias.map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
 
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2 text-white/60">
-              <Filter className="w-4 h-4" />
-              <span className="text-sm">{filteredProdutos.length} produto(s)</span>
+              <select
+                value={filterFornecedor}
+                onChange={(e) => setFilterFornecedor(e.target.value)}
+                className="bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg px-3 py-2 text-white text-xs md:text-sm focus:outline-none focus:border-[#FF2C68]"
+              >
+                <option value="">Todos Fornecedores</option>
+                {fornecedores.map(forn => (
+                  <option key={forn.id} value={forn.id}>{forn.name}</option>
+                ))}
+              </select>
+
+              {/* Toggle de visualização - apenas desktop */}
+              <div className="hidden md:flex bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl p-1">
+                <button
+                  onClick={() => setViewMode('grid')}
+                  className={`p-2 rounded-lg transition-colors ${
+                    viewMode === 'grid' 
+                      ? 'bg-[#FF2C68] text-white' 
+                      : 'text-white/60 hover:text-white'
+                  }`}
+                >
+                  <Grid className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`p-2 rounded-lg transition-colors ${
+                    viewMode === 'table' 
+                      ? 'bg-[#FF2C68] text-white' 
+                      : 'text-white/60 hover:text-white'
+                  }`}
+                >
+                  <List className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-            
-            <div className="flex items-center space-x-2">
-              <button
-                onClick={() => setViewMode('table')}
-                className={`p-2 rounded-lg transition-colors ${
-                  viewMode === 'table' ? 'bg-[#FF2C68]/20 text-[#FF2C68]' : 'text-white/60 hover:text-white'
-                }`}
-              >
-                <List className="w-4 h-4" />
-              </button>
-              <button
-                onClick={() => setViewMode('grid')}
-                className={`p-2 rounded-lg transition-colors ${
-                  viewMode === 'grid' ? 'bg-[#FF2C68]/20 text-[#FF2C68]' : 'text-white/60 hover:text-white'
-                }`}
-              >
-                <Grid className="w-4 h-4" />
-              </button>
+
+            {/* Ações */}
+            <div className="flex flex-wrap gap-2">
+              {canCreateProducts && (
+                <>
+                  {/* Mobile: Dropdown de ações */}
+                  <div className="md:hidden relative">
+                    <motion.button
+                      onClick={() => setShowModal(true)}
+                      className="bg-[#FF2C68] hover:bg-[#FF2C68]/80 text-white px-4 py-2 rounded-xl font-bold transition-all duration-300 flex items-center space-x-2 text-sm"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Novo</span>
+                    </motion.button>
+                  </div>
+
+                  {/* Desktop: Botões completos */}
+                  <div className="hidden md:flex gap-2">
+                    <motion.button
+                      onClick={() => setShowModal(true)}
+                      className="bg-[#FF2C68] hover:bg-[#FF2C68]/80 text-white px-4 py-2 rounded-xl font-bold transition-all duration-300 flex items-center space-x-2 text-sm"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Novo Produto</span>
+                    </motion.button>
+
+                    <motion.button
+                      onClick={() => setShowQuickAdd(true)}
+                      className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-4 py-2 rounded-xl transition-all duration-300 flex items-center space-x-2 text-sm"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Zap className="w-4 h-4" />
+                      <span>Cadastro Rápido</span>
+                    </motion.button>
+
+                    <motion.button
+                      onClick={() => setShowBulkAdd(true)}
+                      className="bg-green-500/20 hover:bg-green-500/30 text-green-400 px-4 py-2 rounded-xl transition-all duration-300 flex items-center space-x-2 text-sm"
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <Layers className="w-4 h-4" />
+                      <span>Lote</span>
+                    </motion.button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
       </div>
 
-      {/* Lista de Produtos */}
-      {viewMode === 'table' ? (
-        <div className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-[#FF2C68]/10">
-                <tr>
-                  <th className="px-6 py-4 text-left text-white font-medium">Produto</th>
-                  <th className="px-6 py-4 text-left text-white font-medium">Especificações</th>
-                  <th className="px-6 py-4 text-left text-white font-medium">Financeiro</th>
-                  <th className="px-6 py-4 text-left text-white font-medium">Estoque</th>
-                  <th className="px-6 py-4 text-left text-white font-medium">Status</th>
-                  <th className="px-6 py-4 text-center text-white font-medium">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#FF2C68]/20">
-                {filteredProdutos.map((produto) => {
-                  const fornecedor = fornecedores.find(f => f.id === produto.fornecedorId);
-                  return (
-                    <tr key={produto.id} className="hover:bg-[#FF2C68]/5 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-12 h-12 bg-[#FF2C68] rounded-xl flex items-center justify-center overflow-hidden">
-                            {produto.imagem ? (
-                              <img src={produto.imagem} alt={produto.nome} className="w-full h-full object-cover" />
-                            ) : (
-                              <Package className="w-6 h-6 text-white" />
-                            )}
-                          </div>
-                          <div>
-                            <p className="text-white font-medium">{produto.nome}</p>
-                            <p className="text-white/60 text-sm">{produto.categoria}</p>
-                            {fornecedor && (
-                              <p className="text-[#FF2C68] text-xs">{fornecedor.name}</p>
-                            )}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="space-y-1 text-sm">
-                          {produto.chip && (
-                            <div className="flex items-center space-x-1">
-                              <Cpu className="w-3 h-3 text-blue-400" />
-                              <span className="text-white/80">{produto.chip}</span>
-                            </div>
-                          )}
-                          {produto.modoChip && (
-                            <div className="flex items-center space-x-1">
-                              <Zap className="w-3 h-3 text-cyan-400" />
-                              <span className="text-white/80">
-                                {modosChip.find(m => m.value === produto.modoChip)?.label || produto.modoChip}
-                              </span>
-                            </div>
-                          )}
-                          {produto.armazenamento && (
-                            <div className="flex items-center space-x-1">
-                              <HardDrive className="w-3 h-3 text-green-400" />
-                              <span className="text-white/80">{produto.armazenamento}</span>
-                            </div>
-                          )}
-                          {produto.nivelBateria && (
-                            <div className="flex items-center space-x-1">
-                              <Battery className="w-3 h-3 text-yellow-400" />
-                              <span className="text-white/80">{produto.nivelBateria}</span>
-                            </div>
-                          )}
-                          {produto.cor && (
-                            <div className="flex items-center space-x-1">
-                              <Palette className="w-3 h-3 text-purple-400" />
-                              <span className="text-white/80">{produto.cor}</span>
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="space-y-1 text-sm">
-                          <p className="text-white font-medium">
-                            R$ {produto.valorFinal?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
-                          </p>
-                          <p className="text-white/60">
-                            Custo: R$ {produto.valorCusto?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
-                          </p>
-                          {produto.valorFrete > 0 && (
-                            <p className="text-white/60">
-                              Frete: R$ {produto.valorFrete?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                            </p>
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-3 py-1 rounded-lg text-xs font-medium ${
-                          produto.estoque < 10 ? 'bg-red-500/20 text-red-400' :
-                          produto.estoque < 20 ? 'bg-yellow-500/20 text-yellow-400' :
-                          'bg-green-500/20 text-green-400'
-                        }`}>
-                          {produto.estoque || 0} unidades
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <span className={`px-3 py-1 rounded-lg text-xs font-medium ${
-                          produto.status === 'ativo' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                        }`}>
-                          {produto.status}
-                        </span>
-                        {produto.temBrinde && (
-                          <div className="mt-1">
-                            <span className="px-2 py-1 bg-[#FF2C68]/20 text-[#FF2C68] rounded text-xs flex items-center space-x-1">
-                              <Gift className="w-3 h-3" />
-                              <span>Brinde</span>
-                            </span>
-                          </div>
-                        )}
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-center space-x-2">
-                          <button
-                            onClick={() => {
-                              setSelectedProduto(produto);
-                              setShowDetails(true);
-                            }}
-                            className="p-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors"
-                          >
-                            <Eye className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleEdit(produto)}
-                            className="p-2 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDelete(produto.id, produto.nome)}
-                            className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            
-            {filteredProdutos.length === 0 && (
-              <div className="text-center py-12">
-                <Package className="w-12 h-12 text-white/30 mx-auto mb-4" />
-                <p className="text-white/60">Nenhum produto encontrado</p>
-              </div>
-            )}
-          </div>
-        </div>
-      ) : (
-        /* Visualização em Grid */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredProdutos.map((produto) => {
-            const fornecedor = fornecedores.find(f => f.id === produto.fornecedorId);
-            return (
-              <motion.div
-                key={produto.id}
-                className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 p-6 hover:border-[#FF2C68]/50 transition-all duration-200"
-                whileHover={{ scale: 1.02 }}
-                layout
-              >
-                {/* Imagem do produto */}
-                <div className="relative mb-4">
-                  {produto.imagem ? (
-                    <img 
-                      src={produto.imagem} 
-                      alt={produto.nome}
-                      className="w-full h-48 object-cover rounded-xl"
-                    />
-                  ) : (
-                    <div className="w-full h-48 bg-[#FF2C68]/10 rounded-xl flex items-center justify-center">
-                      <Package className="w-12 h-12 text-[#FF2C68]/50" />
-                    </div>
-                  )}
-                  
-                  {/* Status e badges */}
-                  <div className="absolute top-2 right-2 flex flex-col space-y-1">
-                    <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                      produto.status === 'ativo' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                    }`}>
-                      {produto.status}
-                    </span>
-                    {produto.temBrinde && (
-                      <span className="px-2 py-1 bg-[#FF2C68]/20 text-[#FF2C68] rounded-lg text-xs flex items-center space-x-1">
-                        <Gift className="w-3 h-3" />
-                        <span>Brinde</span>
-                      </span>
-                    )}
-                  </div>
-                  
-                  {/* Estoque */}
-                  <div className="absolute bottom-2 left-2">
-                    <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                      produto.estoque < 10 ? 'bg-red-500/20 text-red-400' :
-                      produto.estoque < 20 ? 'bg-yellow-500/20 text-yellow-400' :
-                      'bg-green-500/20 text-green-400'
-                    }`}>
-                      {produto.estoque || 0} un.
-                    </span>
-                  </div>
-                </div>
-
-                {/* Informações do produto */}
-                <div className="space-y-3">
-                  <div>
-                    <h3 className="text-white font-bold text-lg mb-1">{produto.nome}</h3>
-                    <p className="text-white/60 text-sm">{produto.categoria}</p>
-                    {fornecedor && (
-                      <p className="text-[#FF2C68] text-xs">{fornecedor.name}</p>
-                    )}
-                  </div>
-
-                  {/* Especificações */}
-                  <div className="space-y-1">
-                    {produto.chip && (
-                      <div className="flex items-center space-x-1 text-xs">
-                        <Cpu className="w-3 h-3 text-blue-400" />
-                        <span className="text-white/80">{produto.chip}</span>
-                      </div>
-                    )}
-                    {produto.modoChip && (
-                      <div className="flex items-center space-x-1 text-xs">
-                        <Zap className="w-3 h-3 text-cyan-400" />
-                        <span className="text-white/80">
-                          {modosChip.find(m => m.value === produto.modoChip)?.label || produto.modoChip}
-                        </span>
-                      </div>
-                    )}
-                    {produto.armazenamento && (
-                      <div className="flex items-center space-x-1 text-xs">
-                        <HardDrive className="w-3 h-3 text-green-400" />
-                        <span className="text-white/80">{produto.armazenamento}</span>
-                      </div>
-                    )}
-                    {produto.cor && (
-                      <div className="flex items-center space-x-1 text-xs">
-                        <Palette className="w-3 h-3 text-purple-400" />
-                        <span className="text-white/80">{produto.cor}</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Preço */}
-                  <div className="border-t border-[#FF2C68]/20 pt-3">
-                    <p className="text-white/60 text-sm">
-                      Custo: R$ {produto.valorCusto?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
-                    </p>
-                    <p className="text-white font-bold text-xl">
-                      R$ {produto.valorFinal?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}
-                    </p>
-                    <p className="text-green-400 text-sm font-medium">
-                      Lucro: R$ {((produto.valorFinal || 0) - (produto.valorCusto || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                    </p>
-                  </div>
-
-                  {/* Ações */}
-                  <div className="flex items-center justify-between pt-2">
-                    <button
-                      onClick={() => {
-                        setSelectedProduto(produto);
-                        setShowDetails(true);
-                      }}
-                      className="p-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors"
-                    >
-                      <Eye className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleEdit(produto)}
-                      className="p-2 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(produto.id, produto.nome)}
-                      className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            );
-          })}
-          
-          {filteredProdutos.length === 0 && (
-            <div className="col-span-full text-center py-12">
-              <Package className="w-12 h-12 text-white/30 mx-auto mb-4" />
-              <p className="text-white/60">Nenhum produto encontrado</p>
-            </div>
+      {/* Lista de produtos responsiva */}
+      {filteredProdutos.length === 0 ? (
+        <div className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 p-8 md:p-12 text-center">
+          <Package className="w-16 md:w-20 h-16 md:h-20 text-white/20 mx-auto mb-4" />
+          <h3 className="text-lg md:text-xl font-bold text-white mb-2">
+            {searchTerm || filterCategoria || filterFornecedor 
+              ? 'Nenhum produto encontrado' 
+              : 'Nenhum produto cadastrado'
+            }
+          </h3>
+          <p className="text-white/60 mb-6 text-sm md:text-base">
+            {searchTerm || filterCategoria || filterFornecedor
+              ? 'Tente ajustar os filtros de busca'
+              : 'Comece cadastrando seus produtos'
+            }
+          </p>
+          {canCreateProducts && !searchTerm && !filterCategoria && !filterFornecedor && (
+            <motion.button
+              onClick={() => setShowModal(true)}
+              className="bg-[#FF2C68] hover:bg-[#FF2C68]/80 text-white px-6 py-3 rounded-xl font-bold transition-all duration-300 flex items-center space-x-2 mx-auto"
+              whileHover={{ scale: 1.02 }}
+            >
+              <Plus className="w-5 h-5" />
+              <span>Cadastrar Produto</span>
+            </motion.button>
           )}
         </div>
-      )}
-
-      {/* Modal de Produto */}
-      <AnimatePresence>
-        {showModal && (
-          <motion.div
-            className="fixed inset-0 bg-[#0D0C0C]/80 backdrop-blur-sm z-[99999] flex items-center justify-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowModal(false)}
-          >
-            <motion.div
-              className="bg-[#0D0C0C] rounded-2xl p-8 w-full max-w-6xl border border-[#FF2C68] relative max-h-[90vh] overflow-y-auto"
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={() => setShowModal(false)}
-                className="absolute top-4 right-4 p-2 rounded-lg bg-[#FF2C68]/20 text-white/60 hover:text-white hover:bg-[#FF2C68]/30 transition-all duration-200"
+      ) : (
+        <>
+          {/* Grid de produtos para mobile e desktop */}
+          <div className={`grid gap-4 md:gap-6 ${
+            viewMode === 'grid' 
+              ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' 
+              : 'grid-cols-1'
+          }`}>
+            {filteredProdutos.map((produto, index) => (
+              <motion.div
+                key={produto.id}
+                className={`bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 hover:border-[#FF2C68]/50 transition-all duration-300 overflow-hidden ${
+                  viewMode === 'table' ? 'flex flex-col md:flex-row md:items-center' : ''
+                }`}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3, delay: index * 0.1 }}
+                whileHover={{ scale: 1.02 }}
               >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold text-[#FF2C68]">
-                  {selectedProduto ? 'Editar Produto' : 'Novo Produto'}
-                </h2>
-                <p className="text-white/60">Configure todos os detalhes do produto</p>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-8">
-                {/* Informações Básicas */}
-                <div className="bg-[#0D0C0C]/30 border border-[#FF2C68]/20 rounded-xl p-6">
-                  <h3 className="text-lg font-bold text-white mb-4 flex items-center space-x-2">
-                    <Smartphone className="w-5 h-5 text-[#FF2C68]" />
-                    <span>Informações Básicas</span>
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-white font-medium mb-2">Nome do Produto *</label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.nome}
-                        onChange={(e) => setFormData({...formData, nome: e.target.value})}
-                        className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
-                        placeholder="Ex: iPhone 15 Pro Max"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-white font-medium mb-2">Categoria *</label>
-                      <select
-                        required
-                        value={formData.categoria}
-                        onChange={(e) => setFormData({...formData, categoria: e.target.value})}
-                        className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white focus:border-[#FF2C68] focus:outline-none transition-colors"
-                      >
-                        <option value="" className="bg-[#0D0C0C]">Selecione uma categoria</option>
-                        {categorias.map(categoria => (
-                          <option key={categoria} value={categoria} className="bg-[#0D0C0C]">{categoria}</option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-white font-medium mb-2">Cor</label>
-                      <input
-                        type="text"
-                        value={formData.cor}
-                        onChange={(e) => setFormData({...formData, cor: e.target.value})}
-                        className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
-                        placeholder="Ex: Azul Titânio"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-white font-medium mb-2">Fornecedor</label>
-                      <select
-                        value={formData.fornecedorId}
-                        onChange={(e) => setFormData({...formData, fornecedorId: e.target.value})}
-                        className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white focus:border-[#FF2C68] focus:outline-none transition-colors"
-                      >
-                        <option value="" className="bg-[#0D0C0C]">Selecione um fornecedor</option>
-                        {fornecedores.map(fornecedor => (
-                          <option key={fornecedor.id} value={fornecedor.id} className="bg-[#0D0C0C]">{fornecedor.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                  
-                  <div className="mt-4">
-                    <label className="block text-white font-medium mb-2">Descrição</label>
-                    <textarea
-                      value={formData.descricao}
-                      onChange={(e) => setFormData({...formData, descricao: e.target.value})}
-                      className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
-                      placeholder="Descrição detalhada do produto"
-                      rows="3"
-                    />
-                  </div>
-                </div>
-
-                {/* Especificações Técnicas */}
-                <div className="bg-[#0D0C0C]/30 border border-[#FF2C68]/20 rounded-xl p-6">
-                  <h3 className="text-lg font-bold text-white mb-4 flex items-center space-x-2">
-                    <Cpu className="w-5 h-5 text-[#FF2C68]" />
-                    <span>Especificações Técnicas</span>
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className="block text-white font-medium mb-2">Chip/Processador</label>
-                      <div className="flex space-x-2">
-                        <select
-                          value={formData.chip}
-                          onChange={(e) => {
-                            if (e.target.value === 'Outro (especificar)') {
-                              setShowChipModal(true);
-                            } else {
-                              setFormData({...formData, chip: e.target.value});
-                            }
-                          }}
-                          className="flex-1 px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white focus:border-[#FF2C68] focus:outline-none transition-colors"
-                        >
-                          <option value="" className="bg-[#0D0C0C]">Selecione o chip</option>
-                          {niveisChip.map(chip => (
-                            <option key={chip} value={chip} className="bg-[#0D0C0C]">{chip}</option>
-                          ))}
-                        </select>
-                        <button
-                          type="button"
-                          onClick={() => setShowChipModal(true)}
-                          className="px-3 py-3 bg-[#FF2C68]/20 border border-[#FF2C68]/30 text-[#FF2C68] rounded-xl hover:bg-[#FF2C68]/30 transition-colors"
-                          title="Adicionar novo chip"
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-white font-medium mb-2">Modo do Chip</label>
-                      <select
-                        value={formData.modoChip}
-                        onChange={(e) => setFormData({...formData, modoChip: e.target.value})}
-                        className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white focus:border-[#FF2C68] focus:outline-none transition-colors"
-                      >
-                        <option value="" className="bg-[#0D0C0C]">Selecione o modo</option>
-                        {modosChip.map(modo => (
-                          <option key={modo.value} value={modo.value} className="bg-[#0D0C0C]">{modo.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-white font-medium mb-2">Armazenamento</label>
-                      <select
-                        value={formData.armazenamento}
-                        onChange={(e) => setFormData({...formData, armazenamento: e.target.value})}
-                        className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white focus:border-[#FF2C68] focus:outline-none transition-colors"
-                      >
-                        <option value="" className="bg-[#0D0C0C]">Selecione o armazenamento</option>
-                        {opcoesArmazenamento.map(opcao => (
-                          <option key={opcao} value={opcao} className="bg-[#0D0C0C]">{opcao}</option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    <div>
-                      <label className="block text-white font-medium mb-2">Nível de Bateria</label>
-                      <input
-                        type="text"
-                        value={formData.nivelBateria}
-                        onChange={(e) => setFormData({...formData, nivelBateria: e.target.value})}
-                        className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
-                        placeholder="Ex: 4500mAh"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-white font-medium mb-2">Imagem do Produto</label>
-                    <div className="space-y-4">
-                      <div className="flex items-center space-x-4">
-                        <input
-                          type="url"
-                          value={formData.imagem}
-                          onChange={(e) => setFormData({...formData, imagem: e.target.value})}
-                          className="flex-1 px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
-                          placeholder="URL da imagem ou cole aqui"
-                        />
-                        <label className="cursor-pointer">
-                          <input
-                            type="file"
-                            accept="image/*"
-                            onChange={(e) => handleImageUpload(e.target.files[0])}
-                            className="hidden"
-                          />
-                          <div className="p-3 bg-[#FF2C68]/20 border border-[#FF2C68]/30 text-[#FF2C68] rounded-xl hover:bg-[#FF2C68]/30 transition-colors flex items-center space-x-2">
-                            {uploading ? (
-                              <RefreshCw className="w-5 h-5 animate-spin" />
-                            ) : (
-                              <Upload className="w-5 h-5" />
-                            )}
-                            <span>{uploading ? 'Carregando...' : 'Upload'}</span>
-                          </div>
-                        </label>
-                      </div>
-                      {formData.imagem && (
-                        <div className="flex items-center space-x-4">
+                {viewMode === 'grid' ? (
+                  /* Card Mode */
+                  <div className="p-4 md:p-6">
+                    {/* Imagem do produto */}
+                    <div className="relative mb-4">
+                      <div className="w-full h-32 md:h-40 bg-[#0D0C0C]/30 rounded-xl overflow-hidden">
+                        {produto.imagem ? (
                           <img 
-                            src={formData.imagem} 
-                            alt="Preview" 
-                            className="w-20 h-20 object-cover rounded-lg border border-[#FF2C68]/30"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                            }}
+                            src={produto.imagem} 
+                            alt={produto.nome}
+                            className="w-full h-full object-cover"
                           />
-                          <button
-                            type="button"
-                            onClick={() => setFormData({...formData, imagem: ''})}
-                            className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center">
+                            <Package className="w-8 md:w-12 h-8 md:h-12 text-white/20" />
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Badge de categoria */}
+                      <div className="absolute top-2 left-2">
+                        <span className="px-2 py-1 bg-[#FF2C68]/20 text-[#FF2C68] rounded-lg text-xs font-medium">
+                          {produto.categoria}
+                        </span>
+                      </div>
 
-                {/* Sistema Financeiro */}
-                <div className="bg-[#0D0C0C]/30 border border-[#FF2C68]/20 rounded-xl p-6">
-                  <h3 className="text-lg font-bold text-white mb-4 flex items-center space-x-2">
-                    <DollarSign className="w-5 h-5 text-[#FF2C68]" />
-                    <span>Sistema Financeiro</span>
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <div>
-                      <label className="block text-white font-medium mb-2">Valor de Custo *</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        required
-                        value={formData.valorCusto}
-                        onChange={(e) => setFormData({...formData, valorCusto: e.target.value})}
-                        className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
-                        placeholder="0.00"
-                      />
+                      {/* Badge de estoque */}
+                      <div className="absolute top-2 right-2">
+                        <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                          produto.estoque > 5 
+                            ? 'bg-green-500/20 text-green-400' 
+                            : produto.estoque > 0 
+                              ? 'bg-yellow-500/20 text-yellow-400'
+                              : 'bg-red-500/20 text-red-400'
+                        }`}>
+                          {produto.estoque} un.
+                        </span>
+                      </div>
                     </div>
-                    
-                    <div>
-                      <label className="block text-white font-medium mb-2">Valor do Frete</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        value={formData.valorFrete}
-                        onChange={(e) => setFormData({...formData, valorFrete: e.target.value})}
-                        className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
-                        placeholder="0.00"
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-white font-medium mb-2">Tipo de Lucro</label>
-                      <select
-                        value={formData.tipoLucro}
-                        onChange={(e) => setFormData({...formData, tipoLucro: e.target.value})}
-                        className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white focus:border-[#FF2C68] focus:outline-none transition-colors"
-                      >
-                        <option value="percentage" className="bg-[#0D0C0C]">Percentual (%)</option>
-                        <option value="fixed" className="bg-[#0D0C0C]">Valor Fixo (R$)</option>
-                      </select>
+
+                    {/* Informações do produto */}
+                    <div className="space-y-3">
+                      <h3 className="text-lg font-bold text-white line-clamp-2">
+                        {produto.nome}
+                      </h3>
+
+                      {/* Especificações técnicas compactas */}
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {produto.armazenamento && (
+                          <div className="flex items-center space-x-1">
+                            <HardDrive className="w-3 h-3 text-[#FF2C68]" />
+                            <span className="text-white/60">{produto.armazenamento}</span>
+                          </div>
+                        )}
+                        {produto.cor && (
+                          <div className="flex items-center space-x-1">
+                            <Palette className="w-3 h-3 text-[#FF2C68]" />
+                            <span className="text-white/60">{produto.cor}</span>
+                          </div>
+                        )}
+                        {produto.nivelBateria && (
+                          <div className="flex items-center space-x-1">
+                            <Battery className="w-3 h-3 text-[#FF2C68]" />
+                            <span className="text-white/60">{produto.nivelBateria}</span>
+                          </div>
+                        )}
+                        {produto.chip && (
+                          <div className="flex items-center space-x-1">
+                            <Cpu className="w-3 h-3 text-[#FF2C68]" />
+                            <span className="text-white/60 truncate">{produto.chip}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Preços */}
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-white/60 text-sm">Custo:</span>
+                          <span className="text-white font-medium">
+                            R$ {produto.valorCusto?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-white/60 text-sm">Venda:</span>
+                          <span className="text-green-400 font-bold text-lg">
+                            R$ {produto.valorFinal?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Ações do card */}
+                      <div className="flex flex-col sm:flex-row gap-2 pt-3 border-t border-[#FF2C68]/20">
+                        <motion.button
+                          onClick={() => {
+                            setSelectedProduto(produto);
+                            setShowDetails(true);
+                          }}
+                          className="flex-1 bg-[#FF2C68]/20 hover:bg-[#FF2C68]/30 text-[#FF2C68] px-3 py-2 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 text-sm"
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                        >
+                          <Eye className="w-4 h-4" />
+                          <span>Ver</span>
+                        </motion.button>
+
+                        {canEditProducts && (
+                          <motion.button
+                            onClick={() => handleEdit(produto)}
+                            className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-3 py-2 rounded-lg transition-colors flex items-center justify-center space-x-2 text-sm"
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                            <span className="hidden sm:inline">Editar</span>
+                          </motion.button>
+                        )}
+
+                        {canDeleteProducts && (
+                          <motion.button
+                            onClick={() => handleDelete(produto.id, produto.nome)}
+                            className="bg-red-500/20 hover:bg-red-500/30 text-red-400 px-3 py-2 rounded-lg transition-colors flex items-center justify-center space-x-2 text-sm"
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            <span className="hidden sm:inline">Excluir</span>
+                          </motion.button>
+                        )}
+                      </div>
                     </div>
                   </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                    <div>
-                      <label className="block text-white font-medium mb-2">
-                        {formData.tipoLucro === 'percentage' ? 'Lucro Percentual (%)' : 'Lucro Fixo (R$)'}
-                      </label>
-                      {formData.tipoLucro === 'percentage' ? (
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={formData.lucroPercentual}
-                          onChange={(e) => setFormData({...formData, lucroPercentual: e.target.value, lucroFixo: ''})}
-                          className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
-                          placeholder="Ex: 25.5"
+                ) : (
+                  /* List Mode */
+                  <div className="flex flex-col md:flex-row md:items-center w-full p-4 md:p-6">
+                    {/* Imagem miniatura */}
+                    <div className="w-full md:w-16 h-16 bg-[#0D0C0C]/30 rounded-xl overflow-hidden mb-3 md:mb-0 md:mr-4 flex-shrink-0">
+                      {produto.imagem ? (
+                        <img 
+                          src={produto.imagem} 
+                          alt={produto.nome}
+                          className="w-full h-full object-cover"
                         />
                       ) : (
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={formData.lucroFixo}
-                          onChange={(e) => setFormData({...formData, lucroFixo: e.target.value, lucroPercentual: ''})}
-                          className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
-                          placeholder="0.00"
-                        />
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Package className="w-6 h-6 text-white/20" />
+                        </div>
                       )}
                     </div>
-                    
-                    <div>
-                      <label className="block text-white font-medium mb-2">Valor Final Calculado</label>
-                      <div className="w-full px-4 py-3 bg-green-500/10 border border-green-500/30 rounded-xl text-green-400 font-bold text-lg flex items-center space-x-2">
-                        <Calculator className="w-5 h-5" />
-                        <span>R$ {formData.valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Breakdown dos cálculos */}
-                  {(formData.valorCusto || formData.valorFrete || formData.lucroPercentual || formData.lucroFixo) && (
-                    <div className="bg-[#FF2C68]/10 border border-[#FF2C68]/30 rounded-xl p-4">
-                      <h4 className="text-[#FF2C68] font-medium mb-2">Detalhamento do Cálculo:</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                        <div>
-                          <span className="text-white/60">Custo:</span>
-                          <p className="text-white font-medium">R$ {(parseFloat(formData.valorCusto) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                        </div>
-                        <div>
-                          <span className="text-white/60">Frete:</span>
-                          <p className="text-white font-medium">R$ {(parseFloat(formData.valorFrete) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                        </div>
-                        <div>
-                          <span className="text-white/60">Lucro:</span>
-                          <p className="text-white font-medium">
-                            R$ {(() => {
-                              const custo = parseFloat(formData.valorCusto) || 0;
-                              if (formData.tipoLucro === 'percentage') {
-                                return ((custo * (parseFloat(formData.lucroPercentual) || 0)) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-                              } else {
-                                return (parseFloat(formData.lucroFixo) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-                              }
-                            })()}
-                          </p>
-                        </div>
-                        <div>
-                          <span className="text-white/60">Total:</span>
-                          <p className="text-green-400 font-bold">R$ {formData.valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
 
-                {/* Estoque e Extras */}
-                <div className="bg-[#0D0C0C]/30 border border-[#FF2C68]/20 rounded-xl p-6">
-                  <h3 className="text-lg font-bold text-white mb-4 flex items-center space-x-2">
-                    <Package className="w-5 h-5 text-[#FF2C68]" />
-                    <span>Estoque e Extras</span>
-                  </h3>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                      <label className="block text-white font-medium mb-2">Quantidade em Estoque *</label>
-                      <input
-                        type="number"
-                        required
-                        value={formData.estoque}
-                        onChange={(e) => setFormData({...formData, estoque: e.target.value})}
-                        className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
-                        placeholder="0"
-                        min="0"
-                      />
+                    {/* Informações principais */}
+                    <div className="flex-1 min-w-0 mb-4 md:mb-0">
+                      <div className="flex flex-col md:flex-row md:items-center md:space-x-4">
+                        <div className="flex-1 min-w-0 mb-2 md:mb-0">
+                          <h3 className="text-lg font-bold text-white truncate">
+                            {produto.nome}
+                          </h3>
+                          <div className="flex flex-wrap items-center gap-2 mt-1">
+                            <span className="px-2 py-1 bg-[#FF2C68]/20 text-[#FF2C68] rounded-lg text-xs">
+                              {produto.categoria}
+                            </span>
+                            <span className={`px-2 py-1 rounded-lg text-xs ${
+                              produto.estoque > 5 
+                                ? 'bg-green-500/20 text-green-400' 
+                                : produto.estoque > 0 
+                                  ? 'bg-yellow-500/20 text-yellow-400'
+                                  : 'bg-red-500/20 text-red-400'
+                            }`}>
+                              {produto.estoque} un.
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                          <div className="text-center">
+                            <p className="text-white/60 text-xs">Custo</p>
+                            <p className="text-white font-medium">
+                              R$ {produto.valorCusto?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-white/60 text-xs">Venda</p>
+                            <p className="text-green-400 font-bold">
+                              R$ {produto.valorFinal?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                          <div className="text-center md:block hidden">
+                            <p className="text-white/60 text-xs">Lucro</p>
+                            <p className="text-blue-400 font-medium">
+                              R$ {((produto.valorFinal || 0) - (produto.valorCusto || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    
-                    <div>
-                      <label className="block text-white font-medium mb-2">Status</label>
-                      <select
-                        value={formData.status}
-                        onChange={(e) => setFormData({...formData, status: e.target.value})}
-                        className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white focus:border-[#FF2C68] focus:outline-none transition-colors"
+
+                    {/* Ações */}
+                    <div className="flex space-x-2 md:ml-4">
+                      <motion.button
+                        onClick={() => {
+                          setSelectedProduto(produto);
+                          setShowDetails(true);
+                        }}
+                        className="bg-[#FF2C68]/20 hover:bg-[#FF2C68]/30 text-[#FF2C68] px-3 py-2 rounded-lg transition-colors flex items-center space-x-1 text-sm"
+                        whileHover={{ scale: 1.02 }}
                       >
-                        <option value="ativo" className="bg-[#0D0C0C]">Ativo</option>
-                        <option value="inativo" className="bg-[#0D0C0C]">Inativo</option>
-                      </select>
-                    </div>
-                    
-                    <div className="flex items-center space-x-4 pt-8">
-                      <label className="flex items-center space-x-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={formData.temBrinde}
-                          onChange={(e) => setFormData({...formData, temBrinde: e.target.checked})}
-                          className="w-5 h-5 text-[#FF2C68] bg-[#0D0C0C] border-[#FF2C68]/30 rounded focus:ring-[#FF2C68] focus:ring-2"
-                        />
-                        <span className="text-white flex items-center space-x-1">
-                          <Gift className="w-4 h-4" />
-                          <span>Tem brinde</span>
-                        </span>
-                      </label>
+                        <Eye className="w-4 h-4" />
+                        <span className="hidden sm:inline">Ver</span>
+                      </motion.button>
+
+                      {canEditProducts && (
+                        <motion.button
+                          onClick={() => handleEdit(produto)}
+                          className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 px-3 py-2 rounded-lg transition-colors flex items-center space-x-1 text-sm"
+                          whileHover={{ scale: 1.02 }}
+                        >
+                          <Edit2 className="w-4 h-4" />
+                          <span className="hidden sm:inline">Editar</span>
+                        </motion.button>
+                      )}
+
+                      {canDeleteProducts && (
+                        <motion.button
+                          onClick={() => handleDelete(produto.id, produto.nome)}
+                          className="bg-red-500/20 hover:bg-red-500/30 text-red-400 px-3 py-2 rounded-lg transition-colors flex items-center space-x-1 text-sm"
+                          whileHover={{ scale: 1.02 }}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span className="hidden sm:inline">Excluir</span>
+                        </motion.button>
+                      )}
                     </div>
                   </div>
-                  
-                  {formData.temBrinde && (
-                    <div className="mt-4">
-                      <label className="block text-white font-medium mb-2">Descrição do Brinde</label>
-                      <input
-                        type="text"
-                        value={formData.brinde}
-                        onChange={(e) => setFormData({...formData, brinde: e.target.value})}
-                        className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
-                        placeholder="Ex: Capinha + Película + Carregador"
-                      />
-                    </div>
-                  )}
-                </div>
+                )}
+              </motion.div>
+            ))}
+          </div>
+        </>
+      )}
 
-                {/* Botões */}
-                <div className="flex justify-end space-x-4 pt-6">
-                  <button
-                    type="button"
-                    onClick={() => setShowModal(false)}
-                    className="px-6 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 text-white rounded-xl hover:bg-[#0D0C0C]/70 transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="px-6 py-3 bg-[#FF2C68] text-white rounded-xl hover:bg-[#FF2C68]/80 transition-colors disabled:opacity-50 flex items-center space-x-2"
-                  >
-                    {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                    <span>{loading ? 'Salvando...' : (selectedProduto ? 'Atualizar' : 'Criar')}</span>
-                  </button>
-                </div>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Modal de Detalhes */}
+      {/* Modal de Detalhes do Produto */}
       <AnimatePresence>
         {showDetails && selectedProduto && (
           <motion.div
@@ -1603,7 +1132,7 @@ export default function Produtos() {
             onClick={() => setShowDetails(false)}
           >
             <motion.div
-              className="bg-[#0D0C0C] rounded-2xl p-8 w-full max-w-4xl border border-[#FF2C68] relative max-h-[90vh] overflow-y-auto"
+              className="bg-[#0D0C0C] rounded-2xl p-6 md:p-8 w-full max-w-2xl border border-[#FF2C68] relative max-h-[90vh] overflow-y-auto"
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -1618,130 +1147,79 @@ export default function Produtos() {
 
               <div className="mb-6">
                 <h2 className="text-2xl font-bold text-[#FF2C68]">Detalhes do Produto</h2>
-                <p className="text-white/60">Informações completas</p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Imagem do produto */}
+              <div className="space-y-6">
+                {/* Imagem principal */}
                 {selectedProduto.imagem && (
-                  <div className="col-span-full mb-6">
+                  <div className="w-full h-48 md:h-64 bg-[#0D0C0C]/30 rounded-xl overflow-hidden">
                     <img 
                       src={selectedProduto.imagem} 
                       alt={selectedProduto.nome}
-                      className="w-full max-w-md mx-auto h-64 object-cover rounded-xl border border-[#FF2C68]/30"
+                      className="w-full h-full object-cover"
                     />
                   </div>
                 )}
 
-                {/* Informações Básicas */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-bold text-white border-b border-[#FF2C68]/30 pb-2">Informações Básicas</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <span className="text-white/60 text-sm">Nome:</span>
-                      <p className="text-white font-medium">{selectedProduto.nome}</p>
+                {/* Informações básicas */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="text-xl font-bold text-white mb-4">{selectedProduto.nome}</h3>
+                    <div className="space-y-2">
+                      <p><span className="text-white/60">Categoria:</span> <span className="text-white">{selectedProduto.categoria}</span></p>
+                      <p><span className="text-white/60">Status:</span> <span className={`font-medium ${selectedProduto.status === 'ativo' ? 'text-green-400' : 'text-red-400'}`}>{selectedProduto.status}</span></p>
+                      <p><span className="text-white/60">Estoque:</span> <span className="text-white">{selectedProduto.estoque} unidades</span></p>
                     </div>
-                    <div>
-                      <span className="text-white/60 text-sm">Categoria:</span>
-                      <p className="text-white">{selectedProduto.categoria}</p>
-                    </div>
-                    <div>
-                      <span className="text-white/60 text-sm">Descrição:</span>
-                      <p className="text-white">{selectedProduto.descricao || 'Não informado'}</p>
-                    </div>
-                    <div>
-                      <span className="text-white/60 text-sm">Fornecedor:</span>
-                      <p className="text-white">
-                        {fornecedores.find(f => f.id === selectedProduto.fornecedorId)?.name || 'Não informado'}
-                      </p>
-                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <h4 className="font-semibold text-white">Financeiro</h4>
+                    <p><span className="text-white/60">Custo:</span> <span className="text-white">R$ {selectedProduto.valorCusto?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></p>
+                    <p><span className="text-white/60">Frete:</span> <span className="text-white">R$ {selectedProduto.valorFrete?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></p>
+                    <p><span className="text-white/60">Preço Final:</span> <span className="text-green-400 font-bold">R$ {selectedProduto.valorFinal?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></p>
+                    <p><span className="text-white/60">Lucro:</span> <span className="text-blue-400 font-medium">R$ {((selectedProduto.valorFinal || 0) - (selectedProduto.valorCusto || 0) - (selectedProduto.valorFrete || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span></p>
                   </div>
                 </div>
 
-                {/* Especificações */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-bold text-white border-b border-[#FF2C68]/30 pb-2">Especificações</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <span className="text-white/60 text-sm">Chip:</span>
-                      <p className="text-white">{selectedProduto.chip || 'Não informado'}</p>
-                    </div>
-                    <div>
-                      <span className="text-white/60 text-sm">Modo do Chip:</span>
-                      <p className="text-white">
-                        {selectedProduto.modoChip 
-                          ? modosChip.find(m => m.value === selectedProduto.modoChip)?.label || selectedProduto.modoChip
-                          : 'Não informado'
-                        }
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-white/60 text-sm">Armazenamento:</span>
-                      <p className="text-white">{selectedProduto.armazenamento || 'Não informado'}</p>
-                    </div>
-                    <div>
-                      <span className="text-white/60 text-sm">Bateria:</span>
-                      <p className="text-white">{selectedProduto.nivelBateria || 'Não informado'}</p>
-                    </div>
-                    <div>
-                      <span className="text-white/60 text-sm">Cor:</span>
-                      <p className="text-white">{selectedProduto.cor || 'Não informado'}</p>
+                {/* Especificações técnicas */}
+                {(selectedProduto.armazenamento || selectedProduto.cor || selectedProduto.nivelBateria || selectedProduto.chip) && (
+                  <div>
+                    <h4 className="font-semibold text-white mb-3">Especificações Técnicas</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {selectedProduto.armazenamento && (
+                        <p><span className="text-white/60">Armazenamento:</span> <span className="text-white">{selectedProduto.armazenamento}</span></p>
+                      )}
+                      {selectedProduto.cor && (
+                        <p><span className="text-white/60">Cor:</span> <span className="text-white">{selectedProduto.cor}</span></p>
+                      )}
+                      {selectedProduto.nivelBateria && (
+                        <p><span className="text-white/60">Bateria:</span> <span className="text-white">{selectedProduto.nivelBateria}</span></p>
+                      )}
+                      {selectedProduto.chip && (
+                        <p><span className="text-white/60">Processador:</span> <span className="text-white">{selectedProduto.chip}</span></p>
+                      )}
+                      {selectedProduto.modoChip && (
+                        <p><span className="text-white/60">Tipo Chip:</span> <span className="text-white">{selectedProduto.modoChip}</span></p>
+                      )}
                     </div>
                   </div>
-                </div>
+                )}
 
-                {/* Financeiro */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-bold text-white border-b border-[#FF2C68]/30 pb-2">Financeiro</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <span className="text-white/60 text-sm">Valor de Custo:</span>
-                      <p className="text-white">R$ {selectedProduto.valorCusto?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}</p>
-                    </div>
-                    <div>
-                      <span className="text-white/60 text-sm">Valor do Frete:</span>
-                      <p className="text-white">R$ {selectedProduto.valorFrete?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}</p>
-                    </div>
-                    <div>
-                      <span className="text-white/60 text-sm">Lucro:</span>
-                      <p className="text-white">
-                        {selectedProduto.tipoLucro === 'percentage' 
-                          ? `${selectedProduto.lucroPercentual}%` 
-                          : `R$ ${selectedProduto.lucroFixo?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}`
-                        }
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-white/60 text-sm">Valor Final:</span>
-                      <p className="text-green-400 font-bold text-lg">R$ {selectedProduto.valorFinal?.toLocaleString('pt-BR', { minimumFractionDigits: 2 }) || '0,00'}</p>
-                    </div>
+                {/* Descrição */}
+                {selectedProduto.descricao && (
+                  <div>
+                    <h4 className="font-semibold text-white mb-2">Descrição</h4>
+                    <p className="text-white/80">{selectedProduto.descricao}</p>
                   </div>
-                </div>
+                )}
 
-                {/* Estoque e Extras */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-bold text-white border-b border-[#FF2C68]/30 pb-2">Estoque e Extras</h3>
-                  <div className="space-y-3">
-                    <div>
-                      <span className="text-white/60 text-sm">Estoque:</span>
-                      <p className="text-white">{selectedProduto.estoque || 0} unidades</p>
-                    </div>
-                    <div>
-                      <span className="text-white/60 text-sm">Status:</span>
-                      <span className={`px-3 py-1 rounded-lg text-xs font-medium ${
-                        selectedProduto.status === 'ativo' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'
-                      }`}>
-                        {selectedProduto.status}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-white/60 text-sm">Brinde:</span>
-                      <p className="text-white">
-                        {selectedProduto.temBrinde ? selectedProduto.brinde || 'Sim' : 'Não'}
-                      </p>
-                    </div>
+                {/* Brinde */}
+                {selectedProduto.temBrinde && selectedProduto.brinde && (
+                  <div>
+                    <h4 className="font-semibold text-white mb-2">Brinde Incluso</h4>
+                    <p className="text-green-400">{selectedProduto.brinde}</p>
                   </div>
-                </div>
+                )}
               </div>
             </motion.div>
           </motion.div>
@@ -1759,7 +1237,7 @@ export default function Produtos() {
             onClick={() => setShowCategoryEditor(false)}
           >
             <motion.div
-              className="bg-[#0D0C0C] rounded-2xl p-8 w-full max-w-2xl border border-[#FF2C68] relative"
+              className="bg-[#0D0C0C] rounded-2xl p-8 w-full max-w-md border border-[#FF2C68] relative"
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -1773,75 +1251,37 @@ export default function Produtos() {
               </button>
 
               <div className="mb-6">
-                <h2 className="text-2xl font-bold text-[#FF2C68]">Editor de Categorias</h2>
-                <p className="text-white/60">Personalize as categorias de produtos</p>
-              </div>
-
-              <CategoryEditor 
-                categories={categorias}
-                onSave={saveCustomCategories}
-                onClose={() => setShowCategoryEditor(false)}
-              />
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Modal de Cadastro Rápido */}
-      <AnimatePresence>
-        {showQuickAdd && (
-          <motion.div
-            className="fixed inset-0 bg-[#0D0C0C]/80 backdrop-blur-sm z-[99999] flex items-center justify-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowQuickAdd(false)}
-          >
-            <motion.div
-              className="bg-[#0D0C0C] rounded-2xl p-8 w-full max-w-3xl border border-[#FF2C68] relative"
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={() => setShowQuickAdd(false)}
-                className="absolute top-4 right-4 p-2 rounded-lg bg-[#FF2C68]/20 text-white/60 hover:text-white hover:bg-[#FF2C68]/30 transition-all duration-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold text-[#FF2C68]">Cadastro Rápido</h2>
-                <p className="text-white/60">Cole o texto do produto para preenchimento automático</p>
+                <h2 className="text-2xl font-bold text-[#FF2C68]">Adicionar Nova Categoria</h2>
+                <p className="text-white/60">Digite o nome da nova categoria</p>
               </div>
 
               <div className="space-y-4">
                 <div>
-                  <label className="block text-white font-medium mb-2">Texto do Produto</label>
-                  <textarea
-                    value={quickAddText}
-                    onChange={(e) => setQuickAddText(e.target.value)}
+                  <label className="block text-white font-medium mb-2">Nome da Categoria</label>
+                  <input
+                    type="text"
+                    value={novoChip}
+                    onChange={(e) => setNovoChip(e.target.value)}
                     className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
-                    placeholder={`Cole aqui o texto do produto:\n\n🚀 PEÇA ÚNICA🔥🔥\n📲IPHONE 14 128GB\ncom detalhes\nPRETO 🖤🔋82%\nPor Apenas ⤵️\nR$2.790,00 🔥🤩`}
-                    rows="8"
+                    placeholder="Ex: Smartphone, Notebook, etc."
+                    onKeyPress={(e) => e.key === 'Enter' && handleAdicionarChip()}
                   />
                 </div>
 
                 <div className="flex justify-end space-x-4">
                   <button
-                    onClick={() => setShowQuickAdd(false)}
+                    onClick={() => setShowCategoryEditor(false)}
                     className="px-6 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 text-white rounded-xl hover:bg-[#0D0C0C]/70 transition-colors"
                   >
                     Cancelar
                   </button>
                   <button
-                    onClick={handleQuickAdd}
-                    disabled={!quickAddText.trim()}
-                    className="px-6 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors disabled:opacity-50 flex items-center space-x-2"
+                    onClick={handleAdicionarChip}
+                    disabled={!novoChip.trim()}
+                    className="px-6 py-3 bg-[#FF2C68] text-white rounded-xl hover:bg-[#FF2C68]/80 transition-colors disabled:opacity-50 flex items-center space-x-2"
                   >
-                    <FileText className="w-4 h-4" />
-                    <span>Processar e Abrir Formulário</span>
+                    <Plus className="w-4 h-4" />
+                    <span>Adicionar</span>
                   </button>
                 </div>
               </div>
@@ -1849,147 +1289,6 @@ export default function Produtos() {
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* Modal de Cadastro em Lote */}
-      <AnimatePresence>
-        {showBulkAdd && (
-          <motion.div
-            className="fixed inset-0 bg-[#0D0C0C]/80 backdrop-blur-sm z-[99999] flex items-center justify-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowBulkAdd(false)}
-          >
-            <motion.div
-              className="bg-[#0D0C0C] rounded-2xl p-8 w-full max-w-4xl border border-[#FF2C68] relative max-h-[90vh] overflow-y-auto"
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={() => setShowBulkAdd(false)}
-                className="absolute top-4 right-4 p-2 rounded-lg bg-[#FF2C68]/20 text-white/60 hover:text-white hover:bg-[#FF2C68]/30 transition-all duration-200"
-              >
-                <X className="w-5 h-5" />
-              </button>
-
-              <div className="mb-6">
-                <h2 className="text-2xl font-bold text-[#FF2C68]">Cadastro em Lote</h2>
-                <p className="text-white/60">Cole o texto com vários produtos para criação automática</p>
-              </div>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-white font-medium mb-2">Lista de Produtos</label>
-                  <textarea
-                    value={bulkAddText}
-                    onChange={(e) => setBulkAddText(e.target.value)}
-                    className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
-                    placeholder={`Cole aqui a lista de produtos:\n\n📲*IPHONE 16 PRO 128GB ESIM*\nR$6.669,00 - DESERT🤎\n\n📲*IPHONE 16 PRO 256GB ESIM*\nR$7.510,00 - DESERT🤎\n\n📲*IPHONE 16 PRO 512GB ESIM*\nR$9.579,00- PRETO🖤\nR$9.579,00 - DESERT🤎`}
-                    rows="12"
-                  />
-                </div>
-
-                {bulkAddText && (
-                  <div className="bg-[#FF2C68]/10 border border-[#FF2C68]/30 rounded-xl p-4">
-                    <h4 className="text-[#FF2C68] font-medium mb-2">Preview dos Produtos:</h4>
-                    <div className="space-y-2 max-h-40 overflow-y-auto">
-                      {parseBulkAddText(bulkAddText).map((produto, index) => (
-                        <div key={index} className="text-sm text-white/80 bg-[#0D0C0C]/30 p-2 rounded">
-                          <strong>{produto.nome}</strong> - R$ {produto.valorFinal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          {produto.cor && ` - ${produto.cor}`}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex justify-end space-x-4">
-                  <button
-                    onClick={() => setShowBulkAdd(false)}
-                    className="px-6 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 text-white rounded-xl hover:bg-[#0D0C0C]/70 transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    onClick={handleBulkAdd}
-                    disabled={!bulkAddText.trim() || loading}
-                    className="px-6 py-3 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition-colors disabled:opacity-50 flex items-center space-x-2"
-                  >
-                    {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Layers className="w-4 h-4" />}
-                    <span>{loading ? 'Criando...' : 'Criar Todos os Produtos'}</span>
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-                  )}
-        </AnimatePresence>
-
-        {/* Modal para Adicionar Chip */}
-        <AnimatePresence>
-          {showChipModal && (
-            <motion.div
-              className="fixed inset-0 bg-[#0D0C0C]/80 backdrop-blur-sm z-[99999] flex items-center justify-center p-4"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setShowChipModal(false)}
-            >
-              <motion.div
-                className="bg-[#0D0C0C] rounded-2xl p-8 w-full max-w-md border border-[#FF2C68] relative"
-                initial={{ opacity: 0, scale: 0.9, y: 20 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: 20 }}
-                onClick={(e) => e.stopPropagation()}
-              >
-                <button
-                  onClick={() => setShowChipModal(false)}
-                  className="absolute top-4 right-4 p-2 rounded-lg bg-[#FF2C68]/20 text-white/60 hover:text-white hover:bg-[#FF2C68]/30 transition-all duration-200"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-
-                <div className="mb-6">
-                  <h2 className="text-2xl font-bold text-[#FF2C68]">Adicionar Novo Chip</h2>
-                  <p className="text-white/60">Digite o nome do novo processador/chip</p>
-                </div>
-
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-white font-medium mb-2">Nome do Chip/Processador</label>
-                    <input
-                      type="text"
-                      value={novoChip}
-                      onChange={(e) => setNovoChip(e.target.value)}
-                      className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
-                      placeholder="Ex: Snapdragon 8 Gen 4, Apple A18, etc."
-                      onKeyPress={(e) => e.key === 'Enter' && handleAdicionarChip()}
-                    />
-                  </div>
-
-                  <div className="flex justify-end space-x-4">
-                    <button
-                      onClick={() => setShowChipModal(false)}
-                      className="px-6 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 text-white rounded-xl hover:bg-[#0D0C0C]/70 transition-colors"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      onClick={handleAdicionarChip}
-                      disabled={!novoChip.trim()}
-                      className="px-6 py-3 bg-[#FF2C68] text-white rounded-xl hover:bg-[#FF2C68]/80 transition-colors disabled:opacity-50 flex items-center space-x-2"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>Adicionar</span>
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    );
-  } 
+    </div>
+  );
+} 

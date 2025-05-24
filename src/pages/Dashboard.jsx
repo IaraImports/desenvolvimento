@@ -15,7 +15,11 @@ import {
   AlertTriangle,
   CheckCircle2,
   UserCheck,
-  BadgeCheck
+  BadgeCheck,
+  ArrowUpRight,
+  ArrowDownRight,
+  BarChart,
+  PieChart
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
@@ -30,9 +34,9 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  BarChart,
+  BarChart as RechartsBarChart,
   Bar,
-  PieChart,
+  PieChart as RechartsPieChart,
   Pie,
   Cell
 } from 'recharts';
@@ -99,123 +103,53 @@ const Dashboard = () => {
 
   const stats = [
     {
-      name: 'Faturamento Total',
+      name: 'Faturamento',
       value: `R$ ${faturamentoTotal.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      shortValue: `R$ ${(faturamentoTotal / 1000).toFixed(0)}k`,
       icon: DollarSign,
-      color: 'text-green-600',
-      bgColor: 'bg-green-100'
+      color: 'text-green-400',
+      bgColor: 'bg-green-500/20',
+      change: '+12%',
+      trend: 'up'
     },
     {
-      name: 'Total de Vendas',
+      name: 'Vendas',
       value: totalVendas,
+      shortValue: totalVendas,
       icon: ShoppingCart,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100'
+      color: 'text-blue-400',
+      bgColor: 'bg-blue-500/20',
+      change: '+8%',
+      trend: 'up'
     },
     {
-      name: 'Produtos Cadastrados',
+      name: 'Produtos',
       value: totalProdutos,
+      shortValue: totalProdutos,
       icon: Package,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-100'
+      color: 'text-purple-400',
+      bgColor: 'bg-purple-500/20',
+      change: '+5%',
+      trend: 'up'
     },
     {
-      name: 'Clientes Ativos',
+      name: 'Clientes',
       value: totalClientes,
+      shortValue: totalClientes,
       icon: Users,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-100'
+      color: 'text-orange-400',
+      bgColor: 'bg-orange-500/20',
+      change: '+15%',
+      trend: 'up'
     }
   ];
-
-  // Teste de permissões para debug
-  const PermissionsDebug = () => (
-    <div className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 p-6 mb-6">
-      <h3 className="text-lg font-bold text-[#FF2C68] mb-4">🔐 Status de Permissões</h3>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="space-y-2">
-          <h4 className="text-white font-medium">Nível do Usuário</h4>
-          <div className="flex items-center space-x-2">
-            <UserCheck className="w-4 h-4 text-blue-400" />
-            <span className="text-white">{userLevel || 'Não definido'}</span>
-          </div>
-        </div>
-        
-        <div className="space-y-2">
-          <h4 className="text-white font-medium">Permissões de Visualização</h4>
-          <div className="space-y-1 text-sm">
-            <div className="flex justify-between">
-              <span className="text-white/60">Dashboard:</span>
-              <span className={hasPermission('dashboard') ? 'text-green-400' : 'text-red-400'}>
-                {hasPermission('dashboard') ? '✓' : '✗'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/60">Produtos:</span>
-              <span className={canView('products') ? 'text-green-400' : 'text-red-400'}>
-                {canView('products') ? '✓' : '✗'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/60">Clientes:</span>
-              <span className={canView('clients') ? 'text-green-400' : 'text-red-400'}>
-                {canView('clients') ? '✓' : '✗'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/60">Serviços:</span>
-              <span className={canView('services') ? 'text-green-400' : 'text-red-400'}>
-                {canView('services') ? '✓' : '✗'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/60">Vendas:</span>
-              <span className={canView('sales') ? 'text-green-400' : 'text-red-400'}>
-                {canView('sales') ? '✓' : '✗'}
-              </span>
-            </div>
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <h4 className="text-white font-medium">Permissões de Ação</h4>
-          <div className="space-y-1 text-sm">
-            <div className="flex justify-between">
-              <span className="text-white/60">Criar Clientes:</span>
-              <span className={canCreate('clients') ? 'text-green-400' : 'text-red-400'}>
-                {canCreate('clients') ? '✓' : '✗'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/60">Editar Clientes:</span>
-              <span className={canEdit('clients') ? 'text-green-400' : 'text-red-400'}>
-                {canEdit('clients') ? '✓' : '✗'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/60">Criar Produtos:</span>
-              <span className={canCreate('products') ? 'text-green-400' : 'text-red-400'}>
-                {canCreate('products') ? '✓' : '✗'}
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-white/60">Editar Serviços:</span>
-              <span className={canEdit('services') ? 'text-green-400' : 'text-red-400'}>
-                {canEdit('services') ? '✓' : '✗'}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
 
   // Debug de Permissões - Mostrar apenas para administradores
   const renderPermissionsDebug = () => {
     if (!isAdmin) return null;
 
     return (
-      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-6">
+      <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4 md:p-6 mb-6">
         <h3 className="text-lg font-bold text-yellow-400 mb-4 flex items-center space-x-2">
           <BadgeCheck className="w-5 h-5" />
           <span>Debug de Permissões</span>
@@ -225,7 +159,7 @@ const Dashboard = () => {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
               <span className="text-white/60">Usuário:</span>
-              <p className="text-white font-medium">{userProfile?.email}</p>
+              <p className="text-white font-medium text-xs md:text-sm truncate">{userProfile?.email}</p>
             </div>
             <div>
               <span className="text-white/60">Nível:</span>
@@ -280,211 +214,360 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((stat) => (
-          <div
+    <div className="space-y-6 md:space-y-8">
+      {/* Header responsivo */}
+      <div className="text-center md:text-left">
+        <h1 className="text-2xl md:text-3xl font-bold text-white">Dashboard</h1>
+        <p className="text-white/60 mt-2 text-sm md:text-base">
+          Visão geral do seu negócio
+        </p>
+      </div>
+
+      {/* Cards de estatísticas responsivos */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        {stats.map((stat, index) => (
+          <motion.div
             key={stat.name}
-            className="card hover:shadow-md transition-shadow duration-200"
+            className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 p-4 md:p-6 hover:border-[#FF2C68]/50 transition-all duration-200"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4, delay: index * 0.1 }}
+            whileHover={{ scale: 1.02 }}
           >
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className={`${stat.bgColor} rounded-md p-3`}>
-                  <stat.icon className={`h-6 w-6 ${stat.color}`} />
-                </div>
+            <div className="flex items-center justify-between mb-3 md:mb-4">
+              <div className={`w-10 md:w-12 h-10 md:h-12 ${stat.bgColor} rounded-xl flex items-center justify-center`}>
+                <stat.icon className={`w-5 md:w-6 h-5 md:h-6 ${stat.color}`} />
               </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    {stat.name}
-                  </dt>
-                  <dd className="text-lg font-semibold text-gray-900">
-                    {stat.value}
-                  </dd>
-                </dl>
+              <div className={`flex items-center space-x-1 text-xs ${
+                stat.trend === 'up' ? 'text-green-400' : 'text-red-400'
+              }`}>
+                {stat.trend === 'up' ? (
+                  <ArrowUpRight className="w-3 h-3" />
+                ) : (
+                  <ArrowDownRight className="w-3 h-3" />
+                )}
+                <span className="hidden md:inline">{stat.change}</span>
               </div>
             </div>
-          </div>
+            <div>
+              <h3 className="text-white/60 text-xs md:text-sm font-medium mb-1">
+                {stat.name}
+              </h3>
+              <p className="text-white font-bold text-lg md:text-2xl">
+                <span className="md:hidden">{stat.shortValue}</span>
+                <span className="hidden md:inline">{stat.value}</span>
+              </p>
+            </div>
+          </motion.div>
         ))}
       </div>
 
-      {/* Alertas */}
+      {/* Alertas responsivos */}
       {produtosEstoqueBaixo.length > 0 && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <AlertTriangle className="h-5 w-5 text-yellow-400" />
-            </div>
-            <div className="ml-3">
-              <h3 className="text-sm font-medium text-yellow-800">
-                Atenção: Produtos com estoque baixo
+        <motion.div 
+          className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-4 md:p-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+        >
+          <div className="flex items-start space-x-3">
+            <AlertTriangle className="w-5 h-5 text-yellow-400 mt-1 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <h3 className="text-sm md:text-base font-bold text-yellow-400 mb-2">
+                ⚠️ Estoque Baixo
               </h3>
-              <div className="mt-2 text-sm text-yellow-700">
-                <p>
-                  {produtosEstoqueBaixo.length} produto(s) com estoque abaixo de 10 unidades:
-                </p>
-                <ul className="list-disc pl-5 mt-1">
-                  {produtosEstoqueBaixo.map(produto => (
-                    <li key={produto.id}>
-                      {produto.nome} - {produto.estoque} unidades
-                    </li>
-                  ))}
-                </ul>
+              <p className="text-yellow-300 text-sm mb-3">
+                {produtosEstoqueBaixo.length} produto(s) com estoque abaixo de 10 unidades
+              </p>
+              <div className="space-y-1 max-h-32 overflow-y-auto">
+                {produtosEstoqueBaixo.slice(0, 5).map(produto => (
+                  <div key={produto.id} className="text-xs text-yellow-200 bg-yellow-500/10 rounded-lg p-2">
+                    <span className="font-medium">{produto.nome}</span> - 
+                    <span className="text-yellow-400 ml-1">{produto.estoque} unidades</span>
+                  </div>
+                ))}
+                {produtosEstoqueBaixo.length > 5 && (
+                  <p className="text-xs text-yellow-300">
+                    +{produtosEstoqueBaixo.length - 5} produtos...
+                  </p>
+                )}
               </div>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
-      {/* Gráficos */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+      {/* Gráficos responsivos */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 md:gap-8">
         {/* Gráfico de Vendas */}
-        <div className="card">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
-            Vendas dos Últimos 7 Dias
-          </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <LineChart data={vendasPorDia}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="data" />
-              <YAxis />
-              <Tooltip />
-              <Line
-                type="monotone"
-                dataKey="vendas"
-                stroke="#3b82f6"
-                strokeWidth={2}
-                dot={{ fill: '#3b82f6' }}
-              />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
+        <motion.div 
+          className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 p-4 md:p-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.3 }}
+        >
+          <div className="flex items-center space-x-2 mb-4 md:mb-6">
+            <BarChart className="w-5 h-5 text-[#FF2C68]" />
+            <h3 className="text-lg md:text-xl font-bold text-white">
+              Vendas - 7 Dias
+            </h3>
+          </div>
+          <div className="h-48 md:h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={vendasPorDia}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#FF2C68/20" />
+                <XAxis 
+                  dataKey="data" 
+                  stroke="#ffffff60"
+                  fontSize={12}
+                  tick={{ fontSize: 12 }}
+                />
+                <YAxis 
+                  stroke="#ffffff60"
+                  fontSize={12}
+                  tick={{ fontSize: 12 }}
+                />
+                <Tooltip 
+                  contentStyle={{
+                    backgroundColor: '#0D0C0C',
+                    border: '1px solid #FF2C68',
+                    borderRadius: '12px',
+                    color: '#ffffff'
+                  }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="vendas"
+                  stroke="#FF2C68"
+                  strokeWidth={3}
+                  dot={{ fill: '#FF2C68', strokeWidth: 2, r: 4 }}
+                  activeDot={{ r: 6, stroke: '#FF2C68', strokeWidth: 2 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
 
         {/* Gráfico de Faturamento */}
-        <div className="card">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
-            Faturamento dos Últimos 7 Dias
-          </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={vendasPorDia}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="data" />
-              <YAxis />
-              <Tooltip 
-                formatter={(value) => [`R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Faturamento']}
-              />
-              <Bar dataKey="faturamento" fill="#10b981" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+        <motion.div 
+          className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 p-4 md:p-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.4 }}
+        >
+          <div className="flex items-center space-x-2 mb-4 md:mb-6">
+            <DollarSign className="w-5 h-5 text-green-400" />
+            <h3 className="text-lg md:text-xl font-bold text-white">
+              Faturamento - 7 Dias
+            </h3>
+          </div>
+          <div className="h-48 md:h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <RechartsBarChart data={vendasPorDia}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#FF2C68/20" />
+                <XAxis 
+                  dataKey="data" 
+                  stroke="#ffffff60"
+                  fontSize={12}
+                  tick={{ fontSize: 12 }}
+                />
+                <YAxis 
+                  stroke="#ffffff60"
+                  fontSize={12}
+                  tick={{ fontSize: 12 }}
+                />
+                <Tooltip 
+                  formatter={(value) => [`R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 'Faturamento']}
+                  contentStyle={{
+                    backgroundColor: '#0D0C0C',
+                    border: '1px solid #10b981',
+                    borderRadius: '12px',
+                    color: '#ffffff'
+                  }}
+                />
+                <Bar dataKey="faturamento" fill="#10b981" radius={[4, 4, 0, 0]} />
+              </RechartsBarChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
 
         {/* Gráfico de Categorias */}
-        <div className="card">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
-            Produtos por Categoria
-          </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <PieChart>
-              <Pie
-                data={dadosCategorias}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                outerRadius={80}
-                fill="#8884d8"
-                dataKey="value"
-              >
-                {dadosCategorias.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-        </div>
+        <motion.div 
+          className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 p-4 md:p-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.5 }}
+        >
+          <div className="flex items-center space-x-2 mb-4 md:mb-6">
+            <PieChart className="w-5 h-5 text-purple-400" />
+            <h3 className="text-lg md:text-xl font-bold text-white">
+              Produtos por Categoria
+            </h3>
+          </div>
+          <div className="h-48 md:h-64">
+            <ResponsiveContainer width="100%" height="100%">
+              <RechartsPieChart>
+                <Pie
+                  data={dadosCategorias}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={window.innerWidth < 768 ? 60 : 80}
+                  fill="#8884d8"
+                  dataKey="value"
+                  fontSize={12}
+                >
+                  {dadosCategorias.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip 
+                  contentStyle={{
+                    backgroundColor: '#0D0C0C',
+                    border: '1px solid #FF2C68',
+                    borderRadius: '12px',
+                    color: '#ffffff'
+                  }}
+                />
+              </RechartsPieChart>
+            </ResponsiveContainer>
+          </div>
+        </motion.div>
 
         {/* Resumo Rápido */}
-        <div className="card">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
-            Resumo Rápido
-          </h3>
+        <motion.div 
+          className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 p-4 md:p-6"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.6 }}
+        >
+          <div className="flex items-center space-x-2 mb-4 md:mb-6">
+            <CheckCircle2 className="w-5 h-5 text-blue-400" />
+            <h3 className="text-lg md:text-xl font-bold text-white">
+              Resumo Rápido
+            </h3>
+          </div>
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Serviços Cadastrados</span>
-              <span className="text-sm font-medium text-gray-900">{totalServicos}</span>
+            <div className="flex items-center justify-between p-3 bg-[#0D0C0C]/50 rounded-xl">
+              <span className="text-white/60 text-sm">Serviços Cadastrados</span>
+              <span className="text-white font-bold">{totalServicos}</span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Ticket Médio</span>
-              <span className="text-sm font-medium text-gray-900">
+            <div className="flex items-center justify-between p-3 bg-[#0D0C0C]/50 rounded-xl">
+              <span className="text-white/60 text-sm">Ticket Médio</span>
+              <span className="text-green-400 font-bold">
                 R$ {totalVendas > 0 ? (faturamentoTotal / totalVendas).toLocaleString('pt-BR', { minimumFractionDigits: 2 }) : '0,00'}
               </span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Produtos Ativos</span>
-              <span className="text-sm font-medium text-gray-900">
+            <div className="flex items-center justify-between p-3 bg-[#0D0C0C]/50 rounded-xl">
+              <span className="text-white/60 text-sm">Produtos Ativos</span>
+              <span className="text-blue-400 font-bold">
                 {produtos.filter(p => p.status === 'ativo').length}
               </span>
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-gray-600">Serviços Ativos</span>
-              <span className="text-sm font-medium text-gray-900">
+            <div className="flex items-center justify-between p-3 bg-[#0D0C0C]/50 rounded-xl">
+              <span className="text-white/60 text-sm">Serviços Ativos</span>
+              <span className="text-purple-400 font-bold">
                 {servicos.filter(s => s.status === 'ativo').length}
               </span>
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
 
-      {/* Atividade Recente */}
-      <div className="card">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">
-          Vendas Recentes
-        </h3>
-        <div className="overflow-hidden shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-          <table className="min-w-full divide-y divide-gray-300">
-            <thead className="bg-gray-50">
+      {/* Atividade Recente - Responsiva */}
+      <motion.div 
+        className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 overflow-hidden"
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.7 }}
+      >
+        <div className="p-4 md:p-6 border-b border-[#FF2C68]/30">
+          <div className="flex items-center space-x-2">
+            <Clock className="w-5 h-5 text-[#FF2C68]" />
+            <h3 className="text-lg md:text-xl font-bold text-white">
+              Vendas Recentes
+            </h3>
+          </div>
+        </div>
+
+        {/* Mobile: Cards */}
+        <div className="md:hidden p-4 space-y-3">
+          {vendas.slice(0, 5).map((venda, index) => (
+            <motion.div
+              key={venda.id || index}
+              className="bg-[#0D0C0C]/50 rounded-xl p-4 border border-[#FF2C68]/20"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.1 }}
+            >
+              <div className="flex justify-between items-start mb-2">
+                <h4 className="text-white font-medium text-sm">{venda.cliente}</h4>
+                <span className="text-green-400 font-bold text-sm">
+                  R$ {venda.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-white/60 text-xs">
+                  {format(new Date(venda.data), 'dd/MM/yyyy', { locale: ptBR })}
+                </span>
+                <span className="px-2 py-1 text-xs font-medium rounded-full bg-green-500/20 text-green-400">
+                  {venda.status}
+                </span>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Desktop: Tabela */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-[#FF2C68]/10">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Cliente
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Data
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Total
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  Status
-                </th>
+                <th className="px-6 py-4 text-left text-white font-medium">Cliente</th>
+                <th className="px-6 py-4 text-left text-white font-medium">Data</th>
+                <th className="px-6 py-4 text-left text-white font-medium">Total</th>
+                <th className="px-6 py-4 text-left text-white font-medium">Status</th>
               </tr>
             </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {vendas.slice(0, 5).map((venda) => (
-                <tr key={venda.id}>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+            <tbody className="divide-y divide-[#FF2C68]/10">
+              {vendas.slice(0, 5).map((venda, index) => (
+                <motion.tr 
+                  key={venda.id || index}
+                  className="hover:bg-[#FF2C68]/5 transition-colors"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.3, delay: index * 0.1 }}
+                >
+                  <td className="px-6 py-4 text-white font-medium">
                     {venda.cliente}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                  <td className="px-6 py-4 text-white/60">
                     {format(new Date(venda.data), 'dd/MM/yyyy', { locale: ptBR })}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                  <td className="px-6 py-4 text-green-400 font-bold">
                     R$ {venda.total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                  <td className="px-6 py-4">
+                    <span className="px-3 py-1 text-xs font-medium rounded-full bg-green-500/20 text-green-400">
                       {venda.status}
                     </span>
                   </td>
-                </tr>
+                </motion.tr>
               ))}
             </tbody>
           </table>
         </div>
-      </div>
 
-      <PermissionsDebug />
+        {vendas.length === 0 && (
+          <div className="p-8 text-center">
+            <ShoppingCart className="w-12 h-12 text-white/30 mx-auto mb-4" />
+            <p className="text-white/60">Nenhuma venda encontrada</p>
+          </div>
+        )}
+      </motion.div>
+
+      {/* Debug de Permissões */}
       {renderPermissionsDebug()}
     </div>
   );
