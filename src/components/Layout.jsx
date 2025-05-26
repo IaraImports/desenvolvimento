@@ -47,6 +47,8 @@ const menuItems = [
   { name: 'Clientes', icon: Users, path: '/clientes' },
   { name: 'Chat Interno', icon: MessageCircle, path: '/chat' },
   { name: 'Relatórios', icon: BarChart3, path: '/relatorios' },
+  { name: 'BI Avançado', icon: TrendingUp, path: '/relatorios-avancados' },
+  { name: 'Automações', icon: Zap, path: '/automacoes-inteligentes' },
   { name: 'Configurações', icon: Settings, path: '/configuracoes' }
 ];
 

@@ -20,7 +20,7 @@ import {
   Hash,
   Receipt
 } from 'lucide-react';
-import { collection, getDocs, query, where, addDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, addDoc, updateDoc, doc, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { toast } from 'react-hot-toast';
 
@@ -163,7 +163,9 @@ export default function PDV() {
     try {
       setLoading(true);
       const { subtotal, valorDesconto, total } = calcularTotais();
+      const dataVenda = Timestamp.now();
 
+      // 1. Criar a venda
       const vendaData = {
         itens: carrinho.map(item => ({
           produtoId: item.id,
@@ -178,13 +180,51 @@ export default function PDV() {
         total,
         formaPagamento,
         status: 'concluida',
-        createdAt: new Date(),
+        createdAt: dataVenda,
         vendedor: 'Usuário Atual' // Aqui você pode pegar do contexto de auth
       };
 
-      await addDoc(collection(db, 'vendas'), vendaData);
+      const vendaRef = await addDoc(collection(db, 'vendas'), vendaData);
+
+      // 2. Atualizar estoque dos produtos
+      const estoquePromises = carrinho.map(async (item) => {
+        const produtoRef = doc(db, 'produtos', item.id);
+        const novoEstoque = item.estoque - item.quantidade;
+        
+        return updateDoc(produtoRef, {
+          estoque: novoEstoque,
+          updatedAt: dataVenda
+        });
+      });
+
+      await Promise.all(estoquePromises);
+
+      // 3. Registrar automaticamente no financeiro (receita)
+      if (total > 0) {
+        const transacaoFinanceira = {
+          type: 'receita',
+          description: `Venda #${vendaRef.id.substring(0, 8)} - ${cliente || 'Cliente não informado'}`,
+          amount: total,
+          category: 'Vendas',
+          date: dataVenda,
+          createdAt: dataVenda,
+          source: 'venda',
+          vendaId: vendaRef.id,
+          formaPagamento
+        };
+
+        await addDoc(collection(db, 'transacoes_financeiras'), transacaoFinanceira);
+      }
+
+      toast.success('Venda realizada com sucesso!', {
+        duration: 4000,
+      });
       
-      toast.success('Venda realizada com sucesso!');
+      // Mostrar resumo da venda
+      toast.success(`Total: R$ ${total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} | ${formaPagamento.replace('_', ' ').toUpperCase()}`, {
+        duration: 6000,
+      });
+
       setCarrinho([]);
       setCliente('');
       setDesconto(0);
@@ -195,7 +235,7 @@ export default function PDV() {
       
     } catch (error) {
       console.error('Erro ao finalizar venda:', error);
-      toast.error('Erro ao finalizar venda');
+      toast.error('Erro ao finalizar venda. Tente novamente.');
     } finally {
       setLoading(false);
     }

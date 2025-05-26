@@ -24,9 +24,9 @@ export default function LoadingSpinner() {
             className="w-20 h-20 drop-shadow-xl"
             animate={{ 
               scale: [1, 1.05, 1]
-            }}
-            transition={{ 
-              duration: 2, 
+              }}
+              transition={{
+                duration: 2,
               repeat: Infinity,
               ease: "easeInOut"
               }}

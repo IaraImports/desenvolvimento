@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
@@ -11,8 +11,12 @@ import {
   AlertTriangle,
   BadgeCheck,
   Activity,
-  RefreshCcw
+  RefreshCcw,
+  Calendar
 } from 'lucide-react';
+import { collection, getDocs, query, where, orderBy, Timestamp } from 'firebase/firestore';
+import { db } from '../config/firebase';
+import { toast } from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
 import { usePermissions } from '../hooks/usePermissions';
 import { useApp } from '../contexts/AppContext';
@@ -43,6 +47,127 @@ const Dashboard = () => {
   } = usePermissions();
 
   const { vendas, produtos, servicos, clientes, loading, loadAllData } = useApp();
+
+  // Estados para dados em tempo real
+  const [realTimeStats, setRealTimeStats] = useState({
+    vendasHoje: 0,
+    receitaHoje: 0,
+    vendasMes: 0,
+    receitaMes: 0,
+    clientesNovos: 0,
+    produtosEstoqueBaixo: 0,
+    osAbertas: 0,
+    orcamentosAbertos: 0
+  });
+  const [loadingRealTime, setLoadingRealTime] = useState(true);
+
+  // Carregar dados em tempo real
+  const loadRealTimeData = async () => {
+    try {
+      setLoadingRealTime(true);
+      
+      // Datas para filtros
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+
+      // Vendas de hoje
+      const vendasHojeQuery = query(
+        collection(db, 'vendas'),
+        where('createdAt', '>=', Timestamp.fromDate(today)),
+        where('createdAt', '<', Timestamp.fromDate(tomorrow)),
+        where('status', '==', 'concluida')
+      );
+      const vendasHojeSnap = await getDocs(vendasHojeQuery);
+      const vendasHojeData = vendasHojeSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      const vendasHoje = vendasHojeData.length;
+      const receitaHoje = vendasHojeData.reduce((acc, venda) => acc + (venda.total || 0), 0);
+
+      // Vendas do mês
+      const vendasMesQuery = query(
+        collection(db, 'vendas'),
+        where('createdAt', '>=', Timestamp.fromDate(startOfMonth)),
+        where('createdAt', '<=', Timestamp.fromDate(endOfMonth)),
+        where('status', '==', 'concluida')
+      );
+      const vendasMesSnap = await getDocs(vendasMesQuery);
+      const vendasMesData = vendasMesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      const vendasMes = vendasMesData.length;
+      const receitaMes = vendasMesData.reduce((acc, venda) => acc + (venda.total || 0), 0);
+
+      // Clientes novos este mês
+      const clientesNovosQuery = query(
+        collection(db, 'clientes'),
+        where('createdAt', '>=', Timestamp.fromDate(startOfMonth)),
+        where('createdAt', '<=', Timestamp.fromDate(endOfMonth))
+      );
+      const clientesNovosSnap = await getDocs(clientesNovosQuery);
+      const clientesNovos = clientesNovosSnap.size;
+
+      // Produtos com estoque baixo
+      const produtosQuery = query(collection(db, 'produtos'));
+      const produtosSnap = await getDocs(produtosQuery);
+      const produtosData = produtosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const produtosEstoqueBaixo = produtosData.filter(produto => 
+        produto.estoque <= 10 && produto.status === 'ativo'
+      ).length;
+
+      // OS abertas
+      const osQuery = query(
+        collection(db, 'ordens_servico'),
+        where('status', 'in', ['aberta', 'em_andamento', 'aguardando_peca'])
+      );
+      const osSnap = await getDocs(osQuery);
+      const osAbertas = osSnap.size;
+
+      // Orçamentos abertos
+      const orcamentosQuery = query(
+        collection(db, 'orcamentos'),
+        where('status', '==', 'aberto')
+      );
+      const orcamentosSnap = await getDocs(orcamentosQuery);
+      const orcamentosAbertos = orcamentosSnap.size;
+
+      setRealTimeStats({
+        vendasHoje,
+        receitaHoje,
+        vendasMes,
+        receitaMes,
+        clientesNovos,
+        produtosEstoqueBaixo,
+        osAbertas,
+        orcamentosAbertos
+      });
+
+    } catch (error) {
+      console.error('Erro ao carregar dados em tempo real:', error);
+      toast.error('Erro ao carregar dados do dashboard');
+    } finally {
+      setLoadingRealTime(false);
+    }
+  };
+
+  useEffect(() => {
+    loadRealTimeData();
+    
+    // Atualizar dados a cada 5 minutos
+    const interval = setInterval(loadRealTimeData, 5 * 60 * 1000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  const formatCurrency = (value) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value || 0);
+  };
 
   // Verificar se os dados estão carregados
   const isDataLoaded = !loading && vendas && produtos && clientes;
@@ -269,6 +394,165 @@ const Dashboard = () => {
           </div>
         </motion.div>
       )}
+
+      {/* Métricas em Tempo Real */}
+      <motion.div variants={itemVariants} className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-white">Métricas em Tempo Real</h2>
+          <div className="flex items-center space-x-2 text-white/60">
+            <Calendar className="w-4 h-4" />
+            <span>{new Date().toLocaleDateString('pt-BR', { 
+              weekday: 'long', 
+              year: 'numeric', 
+              month: 'long', 
+              day: 'numeric' 
+            })}</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Vendas Hoje */}
+          <motion.div
+            className="bg-gradient-to-br from-green-500/10 to-green-600/10 backdrop-blur-xl border border-green-500/20 rounded-2xl p-6"
+            whileHover={{ scale: 1.02, y: -5 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center">
+                <ShoppingCart className="w-6 h-6 text-green-400" />
+              </div>
+              <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded-full">
+                Hoje
+              </span>
+            </div>
+            <p className="text-green-400 text-sm font-medium mb-1">Vendas Realizadas</p>
+            <p className="text-3xl font-bold text-white mb-1">
+              {loadingRealTime ? '-' : realTimeStats.vendasHoje}
+            </p>
+            <p className="text-green-400 text-sm">
+              {loadingRealTime ? 'Carregando...' : formatCurrency(realTimeStats.receitaHoje)}
+            </p>
+          </motion.div>
+
+          {/* Receita do Mês */}
+          <motion.div
+            className="bg-gradient-to-br from-[#FF2C68]/10 to-[#FF2C68]/20 backdrop-blur-xl border border-[#FF2C68]/20 rounded-2xl p-6"
+            whileHover={{ scale: 1.02, y: -5 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-[#FF2C68]/20 rounded-xl flex items-center justify-center">
+                <DollarSign className="w-6 h-6 text-[#FF2C68]" />
+              </div>
+              <span className="text-xs bg-[#FF2C68]/20 text-[#FF2C68] px-2 py-1 rounded-full">
+                Este Mês
+              </span>
+            </div>
+            <p className="text-[#FF2C68] text-sm font-medium mb-1">Receita Total</p>
+            <p className="text-3xl font-bold text-white mb-1">
+              {loadingRealTime ? '-' : formatCurrency(realTimeStats.receitaMes)}
+            </p>
+            <p className="text-[#FF2C68] text-sm">
+              {loadingRealTime ? 'Carregando...' : `${realTimeStats.vendasMes} vendas`}
+            </p>
+          </motion.div>
+
+          {/* Clientes Novos */}
+          <motion.div
+            className="bg-gradient-to-br from-blue-500/10 to-blue-600/10 backdrop-blur-xl border border-blue-500/20 rounded-2xl p-6"
+            whileHover={{ scale: 1.02, y: -5 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">
+                <Users className="w-6 h-6 text-blue-400" />
+              </div>
+              <span className="text-xs bg-blue-500/20 text-blue-400 px-2 py-1 rounded-full">
+                Novos
+              </span>
+            </div>
+            <p className="text-blue-400 text-sm font-medium mb-1">Clientes</p>
+            <p className="text-3xl font-bold text-white mb-1">
+              {loadingRealTime ? '-' : realTimeStats.clientesNovos}
+            </p>
+            <p className="text-blue-400 text-sm">
+              Este mês
+            </p>
+          </motion.div>
+
+          {/* Alertas Gerais */}
+          <motion.div
+            className="bg-gradient-to-br from-orange-500/10 to-orange-600/10 backdrop-blur-xl border border-orange-500/20 rounded-2xl p-6"
+            whileHover={{ scale: 1.02, y: -5 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-orange-400" />
+              </div>
+              <span className="text-xs bg-orange-500/20 text-orange-400 px-2 py-1 rounded-full">
+                Alerta
+              </span>
+            </div>
+            <p className="text-orange-400 text-sm font-medium mb-1">Estoque Baixo</p>
+            <p className="text-3xl font-bold text-white mb-1">
+              {loadingRealTime ? '-' : realTimeStats.produtosEstoqueBaixo}
+            </p>
+            <p className="text-orange-400 text-sm">
+              Produtos críticos
+            </p>
+          </motion.div>
+        </div>
+
+        {/* Resumo de Atividades */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <motion.div
+            className="bg-[#0D0C0C]/50 backdrop-blur-xl border border-purple-500/20 rounded-2xl p-6"
+            whileHover={{ scale: 1.01 }}
+          >
+            <div className="flex items-center space-x-4 mb-4">
+              <div className="w-12 h-12 bg-purple-500/20 rounded-xl flex items-center justify-center">
+                <Wrench className="w-6 h-6 text-purple-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Ordens de Serviço</h3>
+                <p className="text-white/60 text-sm">Status atual</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-white/70">Abertas/Em Andamento:</span>
+                <span className="text-orange-400 font-bold">
+                  {loadingRealTime ? '-' : realTimeStats.osAbertas}
+                </span>
+              </div>
+            </div>
+          </motion.div>
+
+          <motion.div
+            className="bg-[#0D0C0C]/50 backdrop-blur-xl border border-cyan-500/20 rounded-2xl p-6"
+            whileHover={{ scale: 1.01 }}
+          >
+            <div className="flex items-center space-x-4 mb-4">
+              <div className="w-12 h-12 bg-cyan-500/20 rounded-xl flex items-center justify-center">
+                <Activity className="w-6 h-6 text-cyan-400" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Orçamentos</h3>
+                <p className="text-white/60 text-sm">Aguardando aprovação</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-3">
+              <div className="flex items-center justify-between">
+                <span className="text-white/70">Em Aberto:</span>
+                <span className="text-blue-400 font-bold">
+                  {loadingRealTime ? '-' : realTimeStats.orcamentosAbertos}
+                </span>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </motion.div>
 
       {/* Cards de Estatísticas Principais */}
       <motion.div 

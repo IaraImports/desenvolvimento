@@ -26,6 +26,9 @@ import Servicos from './pages/Servicos';
 import Financeiro from './pages/Financeiro';
 import Clientes from './pages/Clientes';
 import Relatorios from './pages/Relatorios';
+import RelatoriosAvancados from './pages/RelatoriosAvancados';
+import AutomacoesInteligentes from './pages/AutomacoesInteligentes';
+import SistemaAuditoria from './pages/SistemaAuditoria';
 import Configuracoes from './pages/Configuracoes';
 import ChatInterno from './pages/ChatInterno';
 
@@ -38,6 +41,8 @@ const ROUTE_PERMISSIONS = {
   financeiro: ['ADMIN', 'VENDEDOR'],
   clientes: ['ADMIN', 'VENDEDOR', 'TECNICO', 'MARKETING', 'POS_VENDA'], // TECNICO adicionado
   relatorios: ['ADMIN', 'MARKETING'],
+  relatoriosAvancados: ['ADMIN', 'MARKETING'],
+  automacoes: ['ADMIN'],
   configuracoes: ['ADMIN'],
   chat: ['ADMIN', 'VENDEDOR', 'TECNICO', 'MARKETING', 'POS_VENDA']
 };
@@ -143,6 +148,22 @@ function AppRoutes() {
               element={
                 <ProtectedRoute allowedLevels={ROUTE_PERMISSIONS.relatorios}>
                   <Relatorios />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/relatorios-avancados" 
+              element={
+                <ProtectedRoute allowedLevels={ROUTE_PERMISSIONS.relatoriosAvancados}>
+                  <RelatoriosAvancados />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/automacoes-inteligentes" 
+              element={
+                <ProtectedRoute allowedLevels={ROUTE_PERMISSIONS.automacoes}>
+                  <AutomacoesInteligentes />
                 </ProtectedRoute>
               } 
             />

@@ -84,6 +84,8 @@ export default function Orcamento() {
 
   const loadClientes = async () => {
     try {
+      console.log('🔄 Carregando clientes...');
+      
       // Carregar clientes diretamente da coleção clientes
       const clientesSnap = await getDocs(collection(db, 'clientes'));
       const clientesData = clientesSnap.docs.map(doc => ({
@@ -91,15 +93,24 @@ export default function Orcamento() {
         ...doc.data()
       }));
 
+      console.log('📋 Clientes encontrados:', clientesData.length);
+
       // Filtrar apenas clientes ativos
       const clientesAtivos = clientesData.filter(cliente => 
-        cliente.status === 'ativo' || !cliente.status
+        cliente.status === 'ativo' || !cliente.hasOwnProperty('status')
       );
 
+      console.log('✅ Clientes ativos:', clientesAtivos.length, clientesAtivos);
+
       setClientes(clientesAtivos);
+      
+      if (clientesAtivos.length === 0) {
+        console.log('⚠️ Nenhum cliente ativo encontrado');
+        toast.error('Nenhum cliente encontrado. Cadastre clientes primeiro.');
+      }
     } catch (error) {
-      console.error('Erro ao carregar clientes:', error);
-      toast.error('Erro ao carregar clientes');
+      console.error('❌ Erro ao carregar clientes:', error);
+      toast.error('Erro ao carregar clientes: ' + error.message);
     }
   };
 
@@ -384,48 +395,79 @@ export default function Orcamento() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="relative">
               <label className="block text-white font-medium mb-2">Nome *</label>
-              <input
-                type="text"
-                value={cliente.nome}
-                onChange={(e) => {
-                  setCliente({...cliente, nome: e.target.value});
-                  setShowClientesDropdown(true);
-                }}
-                onFocus={() => setShowClientesDropdown(true)}
-                className="w-full px-3 py-2 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
-                placeholder="Nome do cliente"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={cliente.nome}
+                  onChange={(e) => {
+                    setCliente({...cliente, nome: e.target.value});
+                    setShowClientesDropdown(true);
+                  }}
+                  onFocus={() => setShowClientesDropdown(true)}
+                  className="flex-1 px-3 py-2 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
+                  placeholder="Digite o nome ou clique na seta para listar"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowClientesDropdown(!showClientesDropdown)}
+                  className="px-3 py-2 bg-[#FF2C68]/20 border border-[#FF2C68]/30 rounded-lg text-[#FF2C68] hover:bg-[#FF2C68]/30 transition-colors"
+                >
+                  ▼
+                </button>
+              </div>
               
               {/* Dropdown de Clientes */}
-              {showClientesDropdown && cliente.nome && (
-                <div className="absolute z-50 w-full mt-1 bg-[#0D0C0C] border border-[#FF2C68]/30 rounded-lg shadow-xl max-h-40 overflow-y-auto">
-                  {clientes
-                    .filter(c => c.nome?.toLowerCase().includes(cliente.nome.toLowerCase()))
-                    .slice(0, 5)
-                    .map((clienteObj, index) => (
-                      <button
-                        key={index}
-                        onClick={() => {
-                          setCliente(clienteObj);
-                          setShowClientesDropdown(false);
-                        }}
-                        className="w-full text-left px-3 py-2 hover:bg-[#FF2C68]/20 text-white border-b border-white/10 last:border-b-0"
-                      >
-                        <div>
-                          <p className="font-medium">{clienteObj.nome}</p>
-                          {clienteObj.telefone && (
-                            <p className="text-xs text-white/60">{clienteObj.telefone}</p>
-                          )}
-                          {clienteObj.email && (
-                            <p className="text-xs text-white/60">{clienteObj.email}</p>
-                          )}
-                        </div>
-                      </button>
-                    ))}
+              {showClientesDropdown && (
+                <div className="absolute z-50 w-full mt-1 bg-[#0D0C0C] border border-[#FF2C68]/30 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+                  {/* Mostrar todos os clientes disponíveis */}
+                  <div className="px-3 py-2 bg-[#FF2C68]/10 border-b border-white/10">
+                    <p className="text-xs text-white/80">
+                      {clientes.length} clientes disponíveis
+                    </p>
+                  </div>
                   
-                  {clientes.filter(c => c.nome?.toLowerCase().includes(cliente.nome.toLowerCase())).length === 0 && (
-                    <div className="px-3 py-2 text-white/60 text-sm">
-                      Nenhum cliente encontrado
+                  {clientes.length > 0 ? (
+                    <>
+                      {clientes
+                        .filter(c => !cliente.nome || c.nome?.toLowerCase().includes(cliente.nome.toLowerCase()))
+                        .slice(0, 8)
+                        .map((clienteObj, index) => (
+                          <button
+                            key={index}
+                            onClick={() => {
+                              console.log('Cliente selecionado:', clienteObj);
+                              setCliente(clienteObj);
+                              setShowClientesDropdown(false);
+                            }}
+                            className="w-full text-left px-3 py-2 hover:bg-[#FF2C68]/20 text-white border-b border-white/10 last:border-b-0"
+                          >
+                            <div>
+                              <p className="font-medium">{clienteObj.nome}</p>
+                              {clienteObj.telefone && (
+                                <p className="text-xs text-white/60">{clienteObj.telefone}</p>
+                              )}
+                              {clienteObj.email && (
+                                <p className="text-xs text-white/60">{clienteObj.email}</p>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      
+                      {cliente.nome && clientes.filter(c => c.nome?.toLowerCase().includes(cliente.nome.toLowerCase())).length === 0 && (
+                        <div className="px-3 py-2 text-yellow-400 text-sm">
+                          Nenhum cliente encontrado com "{cliente.nome}"
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="px-3 py-2 text-yellow-400 text-sm">
+                      <p>Nenhum cliente cadastrado.</p>
+                      <button
+                        onClick={() => navigate('/clientes')}
+                        className="text-[#FF2C68] hover:underline"
+                      >
+                        Cadastrar clientes
+                      </button>
                     </div>
                   )}
                   
