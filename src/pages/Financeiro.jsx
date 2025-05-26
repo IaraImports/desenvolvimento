@@ -14,7 +14,8 @@ import {
   ArrowDownRight,
   X,
   Save,
-  AlertCircle
+  AlertCircle,
+  Download
 } from 'lucide-react';
 import { collection, getDocs, query, where, orderBy, addDoc, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
@@ -199,6 +200,158 @@ export default function Financeiro() {
     }
     
     return '';
+  };
+
+  // Função para gerar PDF de transações financeiras
+  const downloadTransacaoPDF = async (transaction) => {
+    try {
+      toast.loading('Gerando PDF da transação...');
+      
+      // Importar dinamicamente as bibliotecas
+      const jsPDF = (await import('jspdf')).default;
+      
+      // Criar PDF
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      
+      // Configurações
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const margin = 15;
+      const lineHeight = 7;
+      let currentY = margin;
+
+      // Resetar cor do texto para preto
+      pdf.setTextColor(0, 0, 0);
+
+      // Cabeçalho com Logo
+      pdf.setFontSize(24);
+      pdf.setFont("helvetica", "bold");
+      pdf.text('COMPROVANTE FINANCEIRO', margin, currentY);
+      
+      // Logo IARA HUB
+      pdf.setFillColor(255, 44, 104); // Cor principal #FF2C68
+      pdf.rect(pageWidth - margin - 25, currentY - 10, 20, 20, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(8);
+      pdf.text('IARA', pageWidth - margin - 20, currentY - 2);
+      
+      pdf.setTextColor(255, 44, 104); // Cor #FF2C68
+      pdf.setFontSize(18);
+      pdf.setFont("helvetica", "bold");
+      pdf.text('IARA HUB', pageWidth - margin - 40, currentY + 15);
+      pdf.setFontSize(10);
+      pdf.setFont("helvetica", "normal");
+      pdf.text('Assistência Técnica Especializada', pageWidth - margin - 60, currentY + 22);
+
+      currentY += 35;
+
+      // Resetar cor para preto
+      pdf.setTextColor(0, 0, 0);
+
+      // Tipo de Transação
+      pdf.setFontSize(16);
+      pdf.setFont("helvetica", "bold");
+      pdf.text(`${transaction.type === 'receita' ? 'RECEITA' : 'DESPESA'}`, margin, currentY);
+      currentY += 15;
+
+      // Data e ID
+      pdf.setFontSize(10);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(`Data: ${formatDate(transaction.date)}`, margin, currentY);
+      pdf.text(`ID: ${transaction.id.substring(0, 8)}`, pageWidth - margin - 50, currentY);
+      currentY += 15;
+
+      // Dados da Transação
+      pdf.setFontSize(12);
+      pdf.setFont("helvetica", "bold");
+      pdf.text('DADOS DA TRANSAÇÃO', margin, currentY);
+      currentY += 8;
+      
+      pdf.setFontSize(10);
+      pdf.setFont("helvetica", "normal");
+      pdf.text(`Descrição: ${transaction.description}`, margin, currentY);
+      currentY += lineHeight;
+      pdf.text(`Categoria: ${transaction.category}`, margin, currentY);
+      currentY += lineHeight;
+      pdf.text(`Valor: ${formatCurrency(transaction.amount)}`, margin, currentY);
+      currentY += lineHeight;
+      
+      if (transaction.source) {
+        pdf.text(`Origem: ${transaction.source === 'venda' ? 'Automática (Venda)' : 'Manual'}`, margin, currentY);
+        currentY += lineHeight;
+      }
+      currentY += 15;
+
+      // Se for uma receita de venda, mostrar detalhes
+      if (transaction.source === 'venda' && transaction.cliente) {
+        pdf.setFontSize(12);
+        pdf.setFont("helvetica", "bold");
+        pdf.text('DADOS DA VENDA', margin, currentY);
+        currentY += 8;
+        
+        pdf.setFontSize(10);
+        pdf.setFont("helvetica", "normal");
+        pdf.text(`Cliente: ${transaction.cliente || 'Cliente não informado'}`, margin, currentY);
+        currentY += lineHeight;
+        
+        if (transaction.formaPagamento) {
+          pdf.text(`Forma de Pagamento: ${transaction.formaPagamento.replace('_', ' ').toUpperCase()}`, margin, currentY);
+          currentY += lineHeight;
+        }
+
+        if (transaction.itens && transaction.itens.length > 0) {
+          currentY += 10;
+          pdf.setFontSize(12);
+          pdf.setFont("helvetica", "bold");
+          pdf.text('ITENS DA VENDA', margin, currentY);
+          currentY += 8;
+          
+          // Cabeçalho da tabela
+          pdf.setFontSize(9);
+          pdf.setFont("helvetica", "bold");
+          pdf.text('Item', margin, currentY);
+          pdf.text('Qtd', margin + 100, currentY);
+          pdf.text('Valor Unit.', margin + 125, currentY);
+          pdf.text('Total', margin + 155, currentY);
+          currentY += 5;
+          
+          // Linha separadora
+          pdf.line(margin, currentY, pageWidth - margin, currentY);
+          currentY += 5;
+          
+          pdf.setFont("helvetica", "normal");
+          
+          transaction.itens.forEach((item) => {
+            const nomeItem = pdf.splitTextToSize(item.nome || 'Item', 95);
+            pdf.text(nomeItem, margin, currentY);
+            pdf.text(item.quantidade?.toString() || '1', margin + 100, currentY);
+            pdf.text(`R$ ${(item.valorUnitario || 0).toFixed(2)}`, margin + 125, currentY);
+            pdf.text(`R$ ${(item.valorTotal || 0).toFixed(2)}`, margin + 155, currentY);
+            
+            currentY += lineHeight * Math.max(1, nomeItem.length);
+          });
+        }
+      }
+
+      // Rodapé
+      currentY = Math.max(currentY + 20, 250);
+      pdf.setFontSize(8);
+      pdf.setFont("helvetica", "normal");
+      pdf.text('IARA HUB - Assistência Técnica Especializada', margin, currentY);
+      pdf.text(`Documento gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, margin, currentY + 5);
+
+      // Baixar o PDF
+      const tipoTransacao = transaction.type === 'receita' ? 'Receita' : 'Despesa';
+      const nomeArquivo = `${tipoTransacao}_${transaction.id.substring(0, 8)}_${new Date().toLocaleDateString('pt-BR').replace(/\//g, '-')}.pdf`;
+      pdf.save(nomeArquivo);
+      
+      toast.dismiss();
+      toast.success('PDF da transação gerado com sucesso!');
+      
+    } catch (error) {
+      console.error('Erro ao gerar PDF da transação:', error);
+      toast.dismiss();
+      toast.error('Erro ao gerar PDF. Tente novamente.');
+    }
   };
 
   const containerVariants = {
@@ -442,13 +595,23 @@ export default function Financeiro() {
                       </div>
                     </div>
                     
-                    <div className="text-right">
-                      <p className={`text-xl font-bold ${
-                        transaction.type === 'receita' ? 'text-green-400' : 'text-red-400'
-                      }`}>
-                        {transaction.type === 'receita' ? '+' : ''}{formatCurrency(transaction.amount)}
-                      </p>
-                      <Receipt className="w-4 h-4 text-dark-500 ml-auto mt-1" />
+                    <div className="flex items-center space-x-3">
+                      <div className="text-right">
+                        <p className={`text-xl font-bold ${
+                          transaction.type === 'receita' ? 'text-green-400' : 'text-red-400'
+                        }`}>
+                          {transaction.type === 'receita' ? '+' : ''}{formatCurrency(transaction.amount)}
+                        </p>
+                        <Receipt className="w-4 h-4 text-dark-500 ml-auto mt-1" />
+                      </div>
+                      
+                      <button
+                        onClick={() => downloadTransacaoPDF(transaction)}
+                        className="p-2 bg-purple-500/20 border border-purple-500/30 rounded-lg text-purple-400 hover:bg-purple-500/30 transition-colors opacity-0 group-hover:opacity-100"
+                        title="Baixar PDF"
+                      >
+                        <Download className="w-4 h-4" />
+                      </button>
                     </div>
                   </motion.div>
                 ))

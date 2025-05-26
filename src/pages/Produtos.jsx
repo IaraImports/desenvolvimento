@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect, useCallback } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   Plus, Search, Edit2, Trash2, Package, Filter, Eye, X, Save,
   Upload, Smartphone, Battery, Palette, Cpu, Building2, Gift,
@@ -27,35 +27,11 @@ import { toast } from 'react-hot-toast';
 
 export default function Produtos() {
   const { 
-    canView, 
-    canCreate, 
-    canEdit, 
-    canDelete,
-    hasPermission
+    canView
   } = usePermissions();
   
   // Verificar permissões de produtos
   const canViewProducts = canView('products');
-  const canCreateProducts = canCreate('products');
-  const canEditProducts = canEdit('products');
-  const canDeleteProducts = canDelete('products');
-
-  // Verificar se tem permissão para acessar esta página
-  if (!canViewProducts) {
-    return (
-      <div className="min-h-screen bg-gradient-luxury flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-white mb-4">Acesso Negado</h1>
-          <p className="text-white/60 mb-6">
-            Você não tem permissão para visualizar produtos.
-          </p>
-          <p className="text-white/40 text-sm">
-            Entre em contato com o administrador para solicitar acesso.
-          </p>
-        </div>
-      </div>
-    );
-  }
 
   const [produtos, setProdutos] = useState([]);
   const [fornecedores, setFornecedores] = useState([]);
@@ -383,15 +359,35 @@ export default function Produtos() {
 
   const loadFornecedores = async () => {
     try {
-      const q = query(collection(db, 'suppliers'), orderBy('name'));
-      const querySnapshot = await getDocs(q);
-      const fornecedoresData = querySnapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data()
-      }));
-      setFornecedores(fornecedoresData.filter(f => f.active));
+      console.log('🚚 PRODUTOS: Carregando fornecedores...');
+      
+      // Tentar com orderBy primeiro, com fallback para consulta simples
+      let querySnapshot;
+      try {
+        const q = query(collection(db, 'fornecedores'), orderBy('name'));
+        querySnapshot = await getDocs(q);
+        console.log('📊 PRODUTOS: Snapshot com orderBy:', querySnapshot.size, 'documentos');
+      } catch (indexError) {
+        console.warn('⚠️ PRODUTOS: Erro com orderBy, usando consulta simples:', indexError);
+        querySnapshot = await getDocs(collection(db, 'fornecedores'));
+        console.log('📊 PRODUTOS: Snapshot simples:', querySnapshot.size, 'documentos');
+      }
+      
+      const fornecedoresData = querySnapshot.docs.map(doc => {
+        const data = { id: doc.id, ...doc.data() };
+        console.log('📄 PRODUTOS: Fornecedor:', data);
+        return data;
+      });
+      
+      console.log('📦 PRODUTOS: Todos os fornecedores:', fornecedoresData);
+      
+      const fornecedoresAtivos = fornecedoresData.filter(f => f.active !== false);
+      console.log('✅ PRODUTOS: Fornecedores ativos:', fornecedoresAtivos.length);
+      
+      setFornecedores(fornecedoresAtivos);
     } catch (error) {
-      console.error('Erro ao carregar fornecedores:', error);
+      console.error('❌ PRODUTOS: Erro ao carregar fornecedores:', error);
+      toast.error('Erro ao carregar fornecedores');
     }
   };
 
@@ -504,7 +500,7 @@ export default function Produtos() {
   };
 
   // Função para calcular valor final automaticamente
-  const calcularValorFinal = (dados = formData) => {
+  const calcularValorFinal = useCallback((dados = formData) => {
     const custo = parseFloat(dados.valorCusto) || 0;
     const frete = parseFloat(dados.valorFrete) || 0;
     
@@ -517,7 +513,7 @@ export default function Produtos() {
     }
     
     return custo + frete + lucro;
-  };
+  }, [formData]);
 
   // Atualizar valor final sempre que os valores relevantes mudarem
   useEffect(() => {
@@ -525,7 +521,7 @@ export default function Produtos() {
     if (novoValorFinal !== formData.valorFinal) {
       setFormData(prev => ({ ...prev, valorFinal: novoValorFinal }));
     }
-  }, [formData.valorCusto, formData.valorFrete, formData.tipoLucro, formData.lucroPercentual, formData.lucroFixo]);
+  }, [formData.valorCusto, formData.valorFrete, formData.tipoLucro, formData.lucroPercentual, formData.lucroFixo, formData.valorFinal, calcularValorFinal]);
 
   const filteredProdutos = produtos.filter(produto => {
     const matchesSearch = produto.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -674,6 +670,23 @@ export default function Produtos() {
       </div>
     );
   };
+
+  // Verificar se tem permissão para acessar esta página
+  if (!canViewProducts) {
+    return (
+      <div className="min-h-screen bg-gradient-luxury flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-4xl font-bold text-white mb-4">Acesso Negado</h1>
+          <p className="text-white/60 mb-6">
+            Você não tem permissão para visualizar produtos.
+          </p>
+          <p className="text-white/40 text-sm">
+            Entre em contato com o administrador para solicitar acesso.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

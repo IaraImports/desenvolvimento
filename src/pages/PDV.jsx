@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
   CreditCard,
@@ -18,15 +17,17 @@ import {
   ArrowLeft,
   Percent,
   Hash,
-  Receipt
+  Receipt,
+  Wrench
 } from 'lucide-react';
-import { collection, getDocs, query, where, addDoc, updateDoc, doc, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, addDoc, updateDoc, doc, Timestamp } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { toast } from 'react-hot-toast';
 
 export default function PDV() {
   const navigate = useNavigate();
   const [produtos, setProdutos] = useState([]);
+  const [servicos, setServicos] = useState([]);
   const [carrinho, setCarrinho] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [cliente, setCliente] = useState('');
@@ -37,7 +38,7 @@ export default function PDV() {
   const [desconto, setDesconto] = useState(0);
   const [tipoDesconto, setTipoDesconto] = useState('percentage');
   const [loading, setLoading] = useState(false);
-  const [showFinalizacao, setShowFinalizacao] = useState(false);
+  const [activeTab, setActiveTab] = useState('produtos'); // 'produtos' ou 'servicos'
 
   const formasPagamento = [
     { value: 'dinheiro', label: 'Dinheiro', icon: DollarSign },
@@ -48,6 +49,7 @@ export default function PDV() {
 
   useEffect(() => {
     loadProdutos();
+    loadServicos();
     loadClientes();
   }, []);
 
@@ -57,12 +59,51 @@ export default function PDV() {
       const querySnapshot = await getDocs(q);
       const produtosData = querySnapshot.docs.map(doc => ({
         id: doc.id,
+        tipo: 'produto',
         ...doc.data()
       }));
       setProdutos(produtosData.filter(p => p.estoque > 0));
     } catch (error) {
       console.error('Erro ao carregar produtos:', error);
       toast.error('Erro ao carregar produtos');
+    }
+  };
+
+  const loadServicos = async () => {
+    try {
+      console.log('🔧 PDV: Carregando serviços...');
+      
+      // Tentar com orderBy primeiro, com fallback para consulta simples
+      let querySnapshot;
+      try {
+        const q = query(collection(db, 'servicos'), orderBy('nome'));
+        querySnapshot = await getDocs(q);
+        console.log('📊 PDV: Snapshot com orderBy:', querySnapshot.size, 'documentos');
+      } catch (indexError) {
+        console.warn('⚠️ PDV: Erro com orderBy, usando consulta simples:', indexError);
+        querySnapshot = await getDocs(collection(db, 'servicos'));
+        console.log('📊 PDV: Snapshot simples:', querySnapshot.size, 'documentos');
+      }
+      
+      const servicosData = querySnapshot.docs.map(doc => {
+        const data = {
+          id: doc.id,
+          tipo: 'servico',
+          ...doc.data()
+        };
+        console.log('📄 PDV: Serviço:', data);
+        return data;
+      });
+      
+      console.log('📦 PDV: Todos os serviços:', servicosData);
+      
+      const servicosAtivos = servicosData.filter(s => s.status === 'ativo' || !s.status);
+      console.log('✅ PDV: Serviços ativos:', servicosAtivos.length);
+      
+      setServicos(servicosAtivos);
+    } catch (error) {
+      console.error('❌ PDV: Erro ao carregar serviços:', error);
+      toast.error('Erro ao carregar serviços');
     }
   };
 
@@ -92,27 +133,48 @@ export default function PDV() {
     produto.categoria?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  const adicionarAoCarrinho = (produto) => {
-    const itemExistente = carrinho.find(item => item.id === produto.id);
+  const filteredServicos = servicos.filter(servico =>
+    servico.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    servico.categoria?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    servico.descricao?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const currentItems = activeTab === 'produtos' ? filteredProdutos : filteredServicos;
+
+  const adicionarAoCarrinho = (item) => {
+    const itemExistente = carrinho.find(carrinhoItem => carrinhoItem.id === item.id);
     
     if (itemExistente) {
-      if (itemExistente.quantidade < produto.estoque) {
-        setCarrinho(carrinho.map(item =>
-          item.id === produto.id
-            ? { ...item, quantidade: item.quantidade + 1 }
-            : item
-        ));
-        toast.success('Quantidade atualizada');
-      } else {
+      // Para produtos, verificar estoque; para serviços, permitir múltiplas unidades
+      if (item.tipo === 'produto' && itemExistente.quantidade >= item.estoque) {
         toast.error('Estoque insuficiente');
+        return;
       }
+      
+      setCarrinho(carrinho.map(carrinhoItem =>
+        carrinhoItem.id === item.id
+          ? { ...carrinhoItem, quantidade: carrinhoItem.quantidade + 1 }
+          : carrinhoItem
+      ));
+      toast.success('Quantidade atualizada');
     } else {
+      const valorInicial = item.tipo === 'servico' ? item.preco : item.valorFinal;
       setCarrinho([...carrinho, {
-        ...produto,
-        quantidade: 1
+        ...item,
+        quantidade: 1,
+        valorFinal: valorInicial,
+        valorPersonalizado: valorInicial // Valor editável
       }]);
-      toast.success('Produto adicionado ao carrinho');
+      toast.success(`${item.tipo === 'servico' ? 'Serviço' : 'Produto'} adicionado ao carrinho`);
     }
+  };
+
+  const alterarValor = (id, novoValor) => {
+    setCarrinho(carrinho.map(item =>
+      item.id === id
+        ? { ...item, valorPersonalizado: parseFloat(novoValor) || 0 }
+        : item
+    ));
   };
 
   const removerDoCarrinho = (id) => {
@@ -126,10 +188,15 @@ export default function PDV() {
       return;
     }
 
-    const produto = produtos.find(p => p.id === id);
-    if (novaQuantidade > produto.estoque) {
-      toast.error('Estoque insuficiente');
-      return;
+    const itemCarrinho = carrinho.find(item => item.id === id);
+    
+    // Para produtos, verificar estoque
+    if (itemCarrinho?.tipo === 'produto') {
+      const produto = produtos.find(p => p.id === id);
+      if (produto && novaQuantidade > produto.estoque) {
+        toast.error('Estoque insuficiente');
+        return;
+      }
     }
 
     setCarrinho(carrinho.map(item =>
@@ -140,7 +207,7 @@ export default function PDV() {
   };
 
   const calcularTotais = () => {
-    const subtotal = carrinho.reduce((acc, item) => acc + (item.valorFinal * item.quantidade), 0);
+    const subtotal = carrinho.reduce((acc, item) => acc + ((item.valorPersonalizado || item.valorFinal) * item.quantidade), 0);
     let valorDesconto = 0;
     
     if (tipoDesconto === 'percentage') {
@@ -156,7 +223,12 @@ export default function PDV() {
 
   const finalizarVenda = async () => {
     if (carrinho.length === 0) {
-      toast.error('Adicione produtos ao carrinho');
+      toast.error('Adicione produtos ou serviços ao carrinho');
+      return;
+    }
+
+    if (!cliente || cliente.trim() === '') {
+      toast.error('Selecione um cliente para finalizar a venda');
       return;
     }
 
@@ -171,8 +243,8 @@ export default function PDV() {
           produtoId: item.id,
           nome: item.nome,
           quantidade: item.quantidade,
-          valorUnitario: item.valorFinal,
-          valorTotal: item.valorFinal * item.quantidade
+          valorUnitario: item.valorPersonalizado || item.valorFinal,
+          valorTotal: (item.valorPersonalizado || item.valorFinal) * item.quantidade
         })),
         cliente: cliente || 'Cliente não informado',
         subtotal,
@@ -186,16 +258,18 @@ export default function PDV() {
 
       const vendaRef = await addDoc(collection(db, 'vendas'), vendaData);
 
-      // 2. Atualizar estoque dos produtos
-      const estoquePromises = carrinho.map(async (item) => {
-        const produtoRef = doc(db, 'produtos', item.id);
-        const novoEstoque = item.estoque - item.quantidade;
-        
-        return updateDoc(produtoRef, {
-          estoque: novoEstoque,
-          updatedAt: dataVenda
+      // 2. Atualizar estoque apenas dos produtos (não dos serviços)
+      const estoquePromises = carrinho
+        .filter(item => item.tipo === 'produto')
+        .map(async (item) => {
+          const produtoRef = doc(db, 'produtos', item.id);
+          const novoEstoque = item.estoque - item.quantidade;
+          
+          return updateDoc(produtoRef, {
+            estoque: novoEstoque,
+            updatedAt: dataVenda
+          });
         });
-      });
 
       await Promise.all(estoquePromises);
 
@@ -228,7 +302,6 @@ export default function PDV() {
       setCarrinho([]);
       setCliente('');
       setDesconto(0);
-      setShowFinalizacao(false);
       
       // Recarregar produtos para atualizar estoque
       loadProdutos();
@@ -270,7 +343,7 @@ export default function PDV() {
             </button>
             <div>
               <h1 className="text-3xl font-bold text-white">PDV - Ponto de Venda</h1>
-              <p className="text-white/60">Venda direta de produtos</p>
+              <p className="text-white/60">Venda direta de produtos e serviços</p>
             </div>
           </div>
           <div className="flex items-center space-x-2 text-white/60">
@@ -279,66 +352,113 @@ export default function PDV() {
           </div>
         </div>
 
+        {/* Abas Produtos/Serviços */}
+        <div className="flex bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl p-1">
+          <button
+            onClick={() => setActiveTab('produtos')}
+            className={`flex-1 p-3 rounded-lg transition-colors flex items-center justify-center space-x-2 ${
+              activeTab === 'produtos' 
+                ? 'bg-[#FF2C68] text-white' 
+                : 'text-white/60 hover:text-white'
+            }`}
+          >
+            <Package className="w-4 h-4" />
+            <span>Produtos ({filteredProdutos.length})</span>
+          </button>
+          <button
+            onClick={() => setActiveTab('servicos')}
+            className={`flex-1 p-3 rounded-lg transition-colors flex items-center justify-center space-x-2 ${
+              activeTab === 'servicos' 
+                ? 'bg-[#FF2C68] text-white' 
+                : 'text-white/60 hover:text-white'
+            }`}
+          >
+            <Wrench className="w-4 h-4" />
+            <span>Serviços ({filteredServicos.length})</span>
+          </button>
+        </div>
+
         {/* Busca */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/40" />
           <input
             type="text"
-            placeholder="Buscar produtos..."
+            placeholder={`Buscar ${activeTab === 'produtos' ? 'produtos' : 'serviços'}...`}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full pl-10 px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
           />
         </div>
 
-        {/* Lista de Produtos */}
+        {/* Lista de Produtos/Serviços */}
         <div className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 p-6 h-[60vh] overflow-y-auto">
-          <h2 className="text-xl font-bold text-white mb-4">Produtos Disponíveis</h2>
+          <h2 className="text-xl font-bold text-white mb-4">
+            {activeTab === 'produtos' ? 'Produtos Disponíveis' : 'Serviços Disponíveis'}
+          </h2>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {filteredProdutos.map((produto) => (
-              <motion.div
-                key={produto.id}
-                className="bg-[#0D0C0C]/30 rounded-xl p-4 border border-white/10 hover:border-[#FF2C68]/30 transition-all cursor-pointer"
-                whileHover={{ scale: 1.02 }}
-                onClick={() => adicionarAoCarrinho(produto)}
+            {currentItems.map((item) => (
+              <div
+                key={item.id}
+                className="bg-[#0D0C0C]/30 rounded-xl p-4 border border-white/10 hover:border-[#FF2C68]/30 transition-all cursor-pointer hover:scale-105"
+                onClick={() => adicionarAoCarrinho(item)}
               >
                 <div className="flex items-center space-x-4">
-                  {produto.imagem ? (
+                  {item.imagem ? (
                     <img 
-                      src={produto.imagem} 
-                      alt={produto.nome}
+                      src={item.imagem} 
+                      alt={item.nome}
                       className="w-12 h-12 object-cover rounded-lg"
                     />
                   ) : (
                     <div className="w-12 h-12 bg-[#FF2C68]/20 rounded-lg flex items-center justify-center">
-                      <Package className="w-6 h-6 text-[#FF2C68]" />
+                      {item.tipo === 'servico' ? (
+                        <Wrench className="w-6 h-6 text-[#FF2C68]" />
+                      ) : (
+                        <Package className="w-6 h-6 text-[#FF2C68]" />
+                      )}
                     </div>
                   )}
                   
                   <div className="flex-1">
-                    <h3 className="text-white font-medium">{produto.nome}</h3>
-                    <p className="text-white/60 text-sm">{produto.categoria}</p>
+                    <h3 className="text-white font-medium">{item.nome}</h3>
+                    <p className="text-white/60 text-sm">{item.categoria}</p>
+                    {item.tipo === 'servico' && item.descricao && (
+                      <p className="text-white/40 text-xs mt-1 line-clamp-2">{item.descricao}</p>
+                    )}
                     <div className="flex items-center justify-between mt-2">
                       <span className="text-green-400 font-bold">
-                        R$ {produto.valorFinal?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        R$ {(item.tipo === 'servico' ? item.preco : item.valorFinal)?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </span>
-                      <span className="text-white/60 text-sm">
-                        Estoque: {produto.estoque}
-                      </span>
+                      {item.tipo === 'produto' && (
+                        <span className="text-white/60 text-sm">
+                          Estoque: {item.estoque}
+                        </span>
+                      )}
+                      {item.tipo === 'servico' && item.duracao && (
+                        <span className="text-blue-400 text-sm">
+                          {item.duracao}
+                        </span>
+                      )}
                     </div>
                   </div>
                   
                   <Plus className="w-5 h-5 text-green-400" />
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
           
-          {filteredProdutos.length === 0 && (
+          {currentItems.length === 0 && (
             <div className="text-center py-8">
-              <Package className="w-12 h-12 text-white/30 mx-auto mb-4" />
-              <p className="text-white/60">Nenhum produto encontrado</p>
+              {activeTab === 'produtos' ? (
+                <Package className="w-12 h-12 text-white/30 mx-auto mb-4" />
+              ) : (
+                <Wrench className="w-12 h-12 text-white/30 mx-auto mb-4" />
+              )}
+              <p className="text-white/60">
+                Nenhum {activeTab === 'produtos' ? 'produto' : 'serviço'} encontrado
+              </p>
             </div>
           )}
         </div>
@@ -356,7 +476,14 @@ export default function PDV() {
           {carrinho.map((item) => (
             <div key={item.id} className="bg-[#0D0C0C]/30 rounded-xl p-4 border border-white/10">
               <div className="flex items-center justify-between mb-2">
-                <h4 className="text-white font-medium text-sm">{item.nome}</h4>
+                <div className="flex items-center space-x-2">
+                  {item.tipo === 'servico' ? (
+                    <Wrench className="w-4 h-4 text-blue-400" />
+                  ) : (
+                    <Package className="w-4 h-4 text-green-400" />
+                  )}
+                  <h4 className="text-white font-medium text-sm">{item.nome}</h4>
+                </div>
                 <button
                   onClick={() => removerDoCarrinho(item.id)}
                   className="text-red-400 hover:text-red-300 transition-colors"
@@ -383,12 +510,22 @@ export default function PDV() {
                 </div>
                 
                 <div className="text-right">
-                  <p className="text-white/60 text-xs">
-                    R$ {item.valorFinal?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} un.
-                  </p>
+                  <div className="flex items-center space-x-1 mb-1">
+                    <span className="text-white/60 text-xs">R$</span>
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={item.valorPersonalizado || item.valorFinal}
+                      onChange={(e) => alterarValor(item.id, e.target.value)}
+                      className="w-16 px-1 py-0 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded text-white text-xs text-right focus:border-[#FF2C68] focus:outline-none transition-colors"
+                    />
+                  </div>
                   <p className="text-green-400 font-bold">
-                    R$ {(item.valorFinal * item.quantidade).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    R$ {((item.valorPersonalizado || item.valorFinal) * item.quantidade).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </p>
+                  {item.tipo === 'servico' && (
+                    <p className="text-blue-400 text-xs">Serviço</p>
+                  )}
                 </div>
               </div>
             </div>

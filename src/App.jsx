@@ -21,6 +21,7 @@ import Produtos from './pages/Produtos';
 import Vendas from './pages/Vendas';
 import PDV from './pages/PDV';
 import Orcamento from './pages/Orcamento';
+import HistoricoOrcamentos from './pages/HistoricoOrcamentos';
 import OrdemServico from './pages/OrdemServico';
 import Servicos from './pages/Servicos';
 import Financeiro from './pages/Financeiro';
@@ -31,6 +32,8 @@ import AutomacoesInteligentes from './pages/AutomacoesInteligentes';
 import SistemaAuditoria from './pages/SistemaAuditoria';
 import Configuracoes from './pages/Configuracoes';
 import ChatInterno from './pages/ChatInterno';
+import TecnicoMobile from './pages/TecnicoMobile';
+import CalendarioOS from './pages/CalendarioOS';
 
 // Definir níveis de acesso para cada rota
 const ROUTE_PERMISSIONS = {
@@ -120,10 +123,26 @@ function AppRoutes() {
               } 
             />
             <Route 
+              path="/vendas/historico-orcamentos" 
+              element={
+                <ProtectedRoute allowedLevels={ROUTE_PERMISSIONS.vendas}>
+                  <HistoricoOrcamentos />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
               path="/vendas/os" 
               element={
                 <ProtectedRoute allowedLevels={['ADMIN', 'VENDEDOR', 'TECNICO']}>
                   <OrdemServico />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/vendas/os/calendario" 
+              element={
+                <ProtectedRoute allowedLevels={['ADMIN', 'VENDEDOR', 'TECNICO']}>
+                  <CalendarioOS />
                 </ProtectedRoute>
               } 
             />
@@ -180,6 +199,14 @@ function AppRoutes() {
               element={
                 <ProtectedRoute allowedLevels={ROUTE_PERMISSIONS.chat}>
                   <ChatInterno />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/tecnico-mobile" 
+              element={
+                <ProtectedRoute allowedLevels={['ADMIN', 'TECNICO']}>
+                  <TecnicoMobile />
                 </ProtectedRoute>
               } 
             />

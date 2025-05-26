@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
   TrendingUp, 
   Users, 
@@ -14,7 +14,7 @@ import {
   RefreshCcw,
   Calendar
 } from 'lucide-react';
-import { collection, getDocs, query, where, orderBy, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, Timestamp, limit } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { toast } from 'react-hot-toast';
 import { useAuth } from '../contexts/AuthContext';
@@ -38,9 +38,8 @@ import { ptBR } from 'date-fns/locale';
 const COLORS = ['#FF2C68', '#10b981', '#f59e0b', '#3b82f6', '#8b5cf6', '#06b6d4'];
 
 const Dashboard = () => {
-  const { user, userProfile } = useAuth();
+  const { userProfile } = useAuth();
   const { 
-    canView,
     isAdmin,
     isVendedor,
     isTecnico
@@ -69,70 +68,138 @@ const Dashboard = () => {
       // Datas para filtros
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const tomorrow = new Date(today);
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      
       const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
 
-      // Vendas de hoje
-      const vendasHojeQuery = query(
-        collection(db, 'vendas'),
-        where('createdAt', '>=', Timestamp.fromDate(today)),
-        where('createdAt', '<', Timestamp.fromDate(tomorrow)),
-        where('status', '==', 'concluida')
-      );
-      const vendasHojeSnap = await getDocs(vendasHojeQuery);
-      const vendasHojeData = vendasHojeSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Carregar vendas com fallback para evitar erros de índice
+      let todasVendas = [];
+      let vendasHoje = 0;
+      let receitaHoje = 0;
+      let vendasMes = 0;
+      let receitaMes = 0;
       
-      const vendasHoje = vendasHojeData.length;
-      const receitaHoje = vendasHojeData.reduce((acc, venda) => acc + (venda.total || 0), 0);
-
-      // Vendas do mês
-      const vendasMesQuery = query(
-        collection(db, 'vendas'),
-        where('createdAt', '>=', Timestamp.fromDate(startOfMonth)),
-        where('createdAt', '<=', Timestamp.fromDate(endOfMonth)),
-        where('status', '==', 'concluida')
-      );
-      const vendasMesSnap = await getDocs(vendasMesQuery);
-      const vendasMesData = vendasMesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      try {
+        // Tentar consulta com status primeiro
+        const vendasQuery = query(
+          collection(db, 'vendas'),
+          where('status', '==', 'concluida'),
+          orderBy('createdAt', 'desc'),
+          limit(100)
+        );
+        const vendasSnap = await getDocs(vendasQuery);
+        todasVendas = vendasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      } catch (error) {
+        console.warn('Erro na consulta de vendas com índice, tentando consulta simples:', error);
+        
+        try {
+          // Fallback: consulta sem where para status
+          const vendasQuery = query(
+            collection(db, 'vendas'),
+            orderBy('createdAt', 'desc'),
+            limit(100)
+          );
+          const vendasSnap = await getDocs(vendasQuery);
+          todasVendas = vendasSnap.docs
+            .map(doc => ({ id: doc.id, ...doc.data() }))
+            .filter(venda => venda.status === 'concluida'); // Filtrar localmente
+        } catch (fallbackError) {
+          console.warn('Fallback de vendas também falhou:', fallbackError);
+          todasVendas = [];
+        }
+      }
       
-      const vendasMes = vendasMesData.length;
-      const receitaMes = vendasMesData.reduce((acc, venda) => acc + (venda.total || 0), 0);
+      // Filtrar vendas de hoje localmente
+      const vendasHojeData = todasVendas.filter(venda => {
+        if (!venda.createdAt) return false;
+        try {
+          const vendaDate = venda.createdAt.toDate ? venda.createdAt.toDate() : new Date(venda.createdAt);
+          return vendaDate >= today && vendaDate < new Date(today.getTime() + 24 * 60 * 60 * 1000);
+        } catch {
+          return false;
+        }
+      });
+      
+      vendasHoje = vendasHojeData.length;
+      receitaHoje = vendasHojeData.reduce((acc, venda) => acc + (venda.total || 0), 0);
 
-      // Clientes novos este mês
-      const clientesNovosQuery = query(
-        collection(db, 'clientes'),
-        where('createdAt', '>=', Timestamp.fromDate(startOfMonth)),
-        where('createdAt', '<=', Timestamp.fromDate(endOfMonth))
-      );
-      const clientesNovosSnap = await getDocs(clientesNovosQuery);
-      const clientesNovos = clientesNovosSnap.size;
+      // Filtrar vendas do mês localmente
+      const vendasMesData = todasVendas.filter(venda => {
+        if (!venda.createdAt) return false;
+        try {
+          const vendaDate = venda.createdAt.toDate ? venda.createdAt.toDate() : new Date(venda.createdAt);
+          return vendaDate >= startOfMonth;
+        } catch {
+          return false;
+        }
+      });
+      
+      vendasMes = vendasMesData.length;
+      receitaMes = vendasMesData.reduce((acc, venda) => acc + (venda.total || 0), 0);
 
-      // Produtos com estoque baixo
-      const produtosQuery = query(collection(db, 'produtos'));
-      const produtosSnap = await getDocs(produtosQuery);
-      const produtosData = produtosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const produtosEstoqueBaixo = produtosData.filter(produto => 
-        produto.estoque <= 10 && produto.status === 'ativo'
-      ).length;
+      // Carregar clientes com tratamento de erro
+      let clientesNovos = 0;
+      try {
+        const clientesQuery = query(
+          collection(db, 'clientes'),
+          orderBy('createdAt', 'desc'),
+          limit(50)
+        );
+        const clientesSnap = await getDocs(clientesQuery);
+        const todosClientes = clientesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        
+        clientesNovos = todosClientes.filter(cliente => {
+          if (!cliente.createdAt) return false;
+          try {
+            const clienteDate = cliente.createdAt.toDate ? cliente.createdAt.toDate() : new Date(cliente.createdAt);
+            return clienteDate >= startOfMonth;
+          } catch {
+            return false;
+          }
+        }).length;
+      } catch (clienteError) {
+        console.warn('Erro ao carregar clientes:', clienteError);
+        clientesNovos = 0;
+      }
 
-      // OS abertas
-      const osQuery = query(
-        collection(db, 'ordens_servico'),
-        where('status', 'in', ['aberta', 'em_andamento', 'aguardando_peca'])
-      );
-      const osSnap = await getDocs(osQuery);
-      const osAbertas = osSnap.size;
+      // Produtos com estoque baixo (consulta simples sem índice)
+      let produtosEstoqueBaixo = 0;
+      try {
+        const produtosQuery = query(collection(db, 'produtos'), limit(100));
+        const produtosSnap = await getDocs(produtosQuery);
+        const produtosData = produtosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        produtosEstoqueBaixo = produtosData.filter(produto => 
+          (produto.estoque <= 10 || produto.quantidade <= 10) && 
+          produto.status !== 'inativo'
+        ).length;
+      } catch (produtoError) {
+        console.warn('Erro ao carregar produtos:', produtoError);
+        produtosEstoqueBaixo = 0;
+      }
 
-      // Orçamentos abertos
-      const orcamentosQuery = query(
-        collection(db, 'orcamentos'),
-        where('status', '==', 'aberto')
-      );
-      const orcamentosSnap = await getDocs(orcamentosQuery);
-      const orcamentosAbertos = orcamentosSnap.size;
+      // OS abertas (consulta simplificada)
+      let osAbertas = 0;
+      try {
+        const osQuery = query(collection(db, 'ordens_servico'), limit(50));
+        const osSnap = await getDocs(osQuery);
+        const osData = osSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        osAbertas = osData.filter(os => 
+          ['aberta', 'em_andamento', 'aguardando_peca'].includes(os.status)
+        ).length;
+      } catch (osError) {
+        console.warn('Erro ao carregar ordens de serviço:', osError);
+        osAbertas = 0;
+      }
+
+      // Orçamentos abertos (consulta simplificada)
+      let orcamentosAbertos = 0;
+      try {
+        const orcamentosQuery = query(collection(db, 'orcamentos'), limit(50));
+        const orcamentosSnap = await getDocs(orcamentosQuery);
+        const orcamentosData = orcamentosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        orcamentosAbertos = orcamentosData.filter(orc => orc.status === 'aberto').length;
+      } catch (orcamentoError) {
+        console.warn('Erro ao carregar orçamentos:', orcamentoError);
+        orcamentosAbertos = 0;
+      }
 
       setRealTimeStats({
         vendasHoje,
@@ -320,20 +387,7 @@ const Dashboard = () => {
       .slice(0, 5);
   }, [isDataLoaded, vendas]);
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
-    visible: { opacity: 1, y: 0 }
-  };
+  // Removidas as variantes do motion que não são mais utilizadas
 
   const handleRefreshData = async () => {
     try {
@@ -344,14 +398,9 @@ const Dashboard = () => {
   };
 
   return (
-    <motion.div 
-      className="space-y-8"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
-      {/* Header do Dashboard */}
-      <motion.div variants={itemVariants} className="flex items-center justify-between">
+    <div className="space-y-8">
+              {/* Header do Dashboard */}
+        <div className="flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-bold text-white mb-2">Dashboard</h1>
           <p className="text-white/60">Visão geral do seu negócio em tempo real</p>
@@ -366,37 +415,26 @@ const Dashboard = () => {
             <span>Atualizar</span>
           </button>
           <div className="flex items-center space-x-3">
-            <motion.div 
-              className={`w-3 h-3 rounded-full animate-pulse ${loading ? 'bg-yellow-400' : 'bg-green-400'}`}
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ duration: 2, repeat: Infinity }}
-            />
+            <div className={`w-3 h-3 rounded-full animate-pulse ${loading ? 'bg-yellow-400' : 'bg-green-400'}`} />
             <span className={`text-sm font-medium ${loading ? 'text-yellow-400' : 'text-green-400'}`}>
               {loading ? 'Carregando...' : 'Sistema Online'}
             </span>
           </div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Loading Indicator */}
       {loading && (
-        <motion.div 
-          variants={itemVariants}
-          className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-6"
-        >
+        <div className="bg-blue-500/10 border border-blue-500/30 rounded-2xl p-6">
           <div className="flex items-center justify-center space-x-3">
-            <motion.div
-              className="w-6 h-6 border-2 border-blue-400/30 border-t-blue-400 rounded-full"
-              animate={{ rotate: 360 }}
-              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            />
+            <div className="w-6 h-6 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
             <span className="text-blue-400">Carregando dados do sistema...</span>
           </div>
-        </motion.div>
+        </div>
       )}
 
       {/* Métricas em Tempo Real */}
-      <motion.div variants={itemVariants} className="space-y-6">
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
           <h2 className="text-2xl font-bold text-white">Métricas em Tempo Real</h2>
           <div className="flex items-center space-x-2 text-white/60">
@@ -412,11 +450,7 @@ const Dashboard = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Vendas Hoje */}
-          <motion.div
-            className="bg-gradient-to-br from-green-500/10 to-green-600/10 backdrop-blur-xl border border-green-500/20 rounded-2xl p-6"
-            whileHover={{ scale: 1.02, y: -5 }}
-            transition={{ duration: 0.3 }}
-          >
+          <div className="bg-gradient-to-br from-green-500/10 to-green-600/10 backdrop-blur-xl border border-green-500/20 rounded-2xl p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center">
                 <ShoppingCart className="w-6 h-6 text-green-400" />
@@ -432,7 +466,7 @@ const Dashboard = () => {
             <p className="text-green-400 text-sm">
               {loadingRealTime ? 'Carregando...' : formatCurrency(realTimeStats.receitaHoje)}
             </p>
-          </motion.div>
+          </div>
 
           {/* Receita do Mês */}
           <motion.div
@@ -552,21 +586,14 @@ const Dashboard = () => {
             </div>
           </motion.div>
         </div>
-      </motion.div>
+      </div>
 
       {/* Cards de Estatísticas Principais */}
-      <motion.div 
-        variants={itemVariants}
-        className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6"
-      >
-        {stats.map((stat, index) => (
-          <motion.div
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        {stats.map((stat) => (
+          <div
             key={stat.name}
             className={`bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border ${stat.borderColor} p-6 hover:scale-105 transition-all duration-300 group`}
-            whileHover={{ y: -5 }}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: index * 0.1 }}
           >
             <div className="flex items-center justify-between">
               <div className={`w-12 h-12 ${stat.bgColor} rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform`}>
@@ -578,16 +605,13 @@ const Dashboard = () => {
               <p className="text-white/60 text-sm mt-1">{stat.name}</p>
               <p className="text-white/40 text-xs mt-2">{stat.desc}</p>
           </div>
-          </motion.div>
+          </div>
         ))}
-      </motion.div>
+      </div>
 
       {/* Alertas de Estoque Baixo */}
       {produtosEstoqueBaixo.length > 0 && (
-        <motion.div 
-          variants={itemVariants}
-          className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-6"
-        >
+        <div className="bg-orange-500/10 border border-orange-500/30 rounded-2xl p-6">
           <div className="flex items-start space-x-4">
             <div className="w-12 h-12 bg-orange-500/20 rounded-xl flex items-center justify-center">
               <AlertTriangle className="w-6 h-6 text-orange-400" />
@@ -611,16 +635,13 @@ const Dashboard = () => {
               </div>
             </div>
           </div>
-        </motion.div>
+        </div>
       )}
 
       {/* Gráficos */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Gráfico de Vendas */}
-        <motion.div 
-          variants={itemVariants}
-          className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 p-6"
-        >
+        <div className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-xl font-bold text-white">Vendas - Últimos 7 dias</h3>
@@ -668,13 +689,10 @@ const Dashboard = () => {
               </div>
         </div>
           )}
-        </motion.div>
+        </div>
 
         {/* Produtos por Categoria */}
-        <motion.div 
-          variants={itemVariants}
-          className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-blue-500/30 p-6"
-        >
+        <div className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-blue-500/30 p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-xl font-bold text-white">Produtos por Categoria</h3>
@@ -698,8 +716,8 @@ const Dashboard = () => {
                 dataKey="value"
                   stroke="none"
               >
-                {dadosCategorias.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                {dadosCategorias.map((entry, entryIndex) => (
+                  <Cell key={`cell-${entryIndex}`} fill={COLORS[entryIndex % COLORS.length]} />
                 ))}
               </Pie>
                 <Tooltip 
@@ -720,14 +738,11 @@ const Dashboard = () => {
               </div>
             </div>
           )}
-        </motion.div>
+        </div>
       </div>
 
       {/* Vendas Recentes */}
-      <motion.div 
-        variants={itemVariants}
-        className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-green-500/30 p-6"
-      >
+      <div className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-green-500/30 p-6">
         <div className="flex items-center justify-between mb-6">
           <div>
             <h3 className="text-xl font-bold text-white">Vendas Recentes</h3>
@@ -738,17 +753,17 @@ const Dashboard = () => {
           </div>
         </div>
         <div className="space-y-3">
-          {vendasRecentes.length > 0 ? vendasRecentes.map((venda, index) => {
+          {vendasRecentes.length > 0 ? vendasRecentes.map((venda) => {
             const dataVenda = parseDate(venda.data || venda.createdAt || venda.timestamp);
             const valorVenda = parseFloat(venda.total) || parseFloat(venda.valor) || parseFloat(venda.valorTotal) || 0;
             
             return (
-              <motion.div
+              <div
                 key={venda.id}
                 className="flex items-center justify-between p-4 bg-[#0D0C0C]/30 rounded-xl hover:bg-[#0D0C0C]/50 transition-colors"
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
+
               >
                 <div className="flex items-center space-x-4">
                   <div className="w-10 h-10 bg-[#FF2C68]/20 rounded-xl flex items-center justify-center">
@@ -769,7 +784,7 @@ const Dashboard = () => {
                     {venda.status || 'Concluída'}
               </span>
             </div>
-              </motion.div>
+              </div>
             );
           }) : (
             <div className="text-center py-8">
@@ -778,13 +793,10 @@ const Dashboard = () => {
             </div>
           )}
         </div>
-      </motion.div>
+      </div>
 
       {/* Acesso Rápido */}
-      <motion.div 
-        variants={itemVariants}
-        className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 p-6"
-      >
+      <div className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 p-6">
         <h3 className="text-xl font-bold text-white mb-6">Acesso Rápido</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
@@ -792,7 +804,7 @@ const Dashboard = () => {
             { name: 'Cadastrar Produto', icon: Package, path: '/produtos', color: 'blue' },
             { name: 'Novo Cliente', icon: Users, path: '/clientes', color: 'purple' },
             { name: 'Criar OS', icon: Wrench, path: '/vendas/os', color: 'orange' }
-          ].map((item, index) => (
+          ].map((item) => (
             <Link
               key={item.name}
               to={item.path}
@@ -805,14 +817,11 @@ const Dashboard = () => {
             </Link>
           ))}
         </div>
-      </motion.div>
+      </div>
 
       {/* Debug de Permissões - Só para Admin */}
       {isAdmin && (
-        <motion.div 
-          variants={itemVariants}
-          className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-6"
-        >
+        <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-2xl p-6">
           <h3 className="text-lg font-bold text-yellow-400 mb-4 flex items-center space-x-2">
             <BadgeCheck className="w-5 h-5" />
             <span>Debug de Permissões (Admin)</span>
@@ -861,9 +870,9 @@ const Dashboard = () => {
         </div>
       </div>
     </div>
-        </motion.div>
+        </div>
       )}
-    </motion.div>
+    </div>
   );
 };
 
