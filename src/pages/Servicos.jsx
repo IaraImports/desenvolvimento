@@ -135,10 +135,10 @@ export default function Servicos() {
       
       // Limitar consulta para melhorar performance
       const q = query(
-        collection(db, 'ordens_servico'), 
+          collection(db, 'ordens_servico'),
         orderBy('createdAt', 'desc'),
         limit(limitDocs)
-      );
+        );
       const querySnapshot = await getDocs(q);
       
       let osData = querySnapshot.docs.map(doc => ({
@@ -309,7 +309,7 @@ export default function Servicos() {
 
   // Usar debounce para otimizar busca
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
-  
+
   const filteredOS = useMemo(() => {
     return ordensServico.filter(os => {
       const matchSearch = !debouncedSearchTerm || 
@@ -317,13 +317,13 @@ export default function Servicos() {
         os.numero?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
         os.equipamento?.marca?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
         os.equipamento?.modelo?.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
-      
-      const matchStatus = statusFilter === 'todas' || os.servico?.status === statusFilter;
-      const matchTecnico = tecnicoFilter === 'todos' || os.servico?.tecnico === tecnicoFilter;
-      const matchPrioridade = prioridadeFilter === 'todas' || os.problema?.prioridade === prioridadeFilter;
-      
-      return matchSearch && matchStatus && matchTecnico && matchPrioridade;
-    });
+    
+    const matchStatus = statusFilter === 'todas' || os.servico?.status === statusFilter;
+    const matchTecnico = tecnicoFilter === 'todos' || os.servico?.tecnico === tecnicoFilter;
+    const matchPrioridade = prioridadeFilter === 'todas' || os.problema?.prioridade === prioridadeFilter;
+    
+    return matchSearch && matchStatus && matchTecnico && matchPrioridade;
+  });
   }, [ordensServico, debouncedSearchTerm, statusFilter, tecnicoFilter, prioridadeFilter]);
 
   const getStatusColor = (status) => {
@@ -684,7 +684,7 @@ export default function Servicos() {
             </div>
           ) : (
             <>
-              <div className={viewMode === 'grid' ? 'grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6' : 'space-y-4'}>
+            <div className={viewMode === 'grid' ? 'grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6' : 'space-y-4'}>
                 {filteredOS.slice(0, 20).map((os, index) => (
                 <motion.div
                   key={os.id}
@@ -794,8 +794,8 @@ export default function Servicos() {
                     </div>
                   </div>
                 </motion.div>
-                              ))}
-              </div>
+              ))}
+            </div>
               
               {filteredOS.length > 20 && (
                 <motion.div

@@ -504,459 +504,562 @@ export default function Clientes() {
     });
   };
 
-  // Filtrar e buscar clientes
-  const clientesFiltrados = clientes.filter(cliente => {
-    const matchesSearch = !searchTerm || 
+  const filteredClientes = clientes.filter(cliente => {
+    // Filtro de busca
+    const searchMatch = !searchTerm || 
       cliente.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cliente.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       cliente.telefone?.includes(searchTerm) ||
+      cliente.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       cliente.cpf?.includes(searchTerm) ||
-      cliente.cnpj?.includes(searchTerm);
+      cliente.cnpj?.includes(searchTerm) ||
+      cliente.razaoSocial?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      cliente.nomeFantasia?.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesStatus = filters.status === 'todos' || cliente.status === filters.status;
-    const matchesTipo = filters.tipoDocumento === 'todos' || cliente.tipoDocumento === filters.tipoDocumento;
-    const matchesCidade = !filters.cidade || cliente.cidade?.toLowerCase().includes(filters.cidade.toLowerCase());
-    const matchesEstado = !filters.estado || cliente.estado?.toLowerCase().includes(filters.estado.toLowerCase());
+    // Filtro de status
+    const statusMatch = filters.status === 'todos' || cliente.status === filters.status;
 
-    return matchesSearch && matchesStatus && matchesTipo && matchesCidade && matchesEstado;
+    // Filtro de tipo de documento
+    const tipoDocMatch = filters.tipoDocumento === 'todos' || 
+      (filters.tipoDocumento === 'cpf' && cliente.cpf) ||
+      (filters.tipoDocumento === 'cnpj' && cliente.cnpj);
+
+    // Filtro de cidade
+    const cidadeMatch = !filters.cidade || 
+      cliente.cidade?.toLowerCase().includes(filters.cidade.toLowerCase());
+
+    // Filtro de estado
+    const estadoMatch = !filters.estado || cliente.estado === filters.estado;
+
+    // Filtro de período (clientes criados)
+    let periodoMatch = true;
+    if (filters.periodo !== 'todos' && cliente.createdAt) {
+      const clienteDate = cliente.createdAt.toDate();
+      const hoje = new Date();
+      const diasAtras = {
+        '7dias': 7,
+        '30dias': 30,
+        '90dias': 90,
+        '1ano': 365
+      };
+      
+      if (diasAtras[filters.periodo]) {
+        const dataLimite = new Date();
+        dataLimite.setDate(hoje.getDate() - diasAtras[filters.periodo]);
+        periodoMatch = clienteDate >= dataLimite;
+      }
+    }
+
+    return searchMatch && statusMatch && tipoDocMatch && cidadeMatch && estadoMatch && periodoMatch;
   });
 
   const getStatusColor = (status) => {
     switch (status) {
-      case 'ativo': return 'text-green-400 bg-green-500/20';
-      case 'inativo': return 'text-red-400 bg-red-500/20';
-      case 'bloqueado': return 'text-yellow-400 bg-yellow-500/20';
-      default: return 'text-gray-400 bg-gray-500/20';
+      case 'ativo': return 'bg-green-500/20 text-green-400';
+      case 'inativo': return 'bg-red-500/20 text-red-400';
+      case 'bloqueado': return 'bg-yellow-500/20 text-yellow-400';
+      default: return 'bg-gray-500/20 text-gray-400';
     }
   };
 
   const getTipoIcon = (tipo) => {
     switch (tipo) {
-      case 'cpf': return <User className="w-4 h-4" />;
-      case 'cnpj': return <Building className="w-4 h-4" />;
-      default: return <Users className="w-4 h-4" />;
+      case 'venda': return ShoppingBag;
+      case 'os': return Wrench;
+      case 'orcamento': return FileText;
+      default: return FileText;
     }
   };
 
   const getTipoColor = (tipo) => {
     switch (tipo) {
-      case 'cpf': return 'text-blue-400 bg-blue-500/20';
-      case 'cnpj': return 'text-purple-400 bg-purple-500/20';
-      default: return 'text-gray-400 bg-gray-500/20';
+      case 'venda': return 'text-green-400';
+      case 'os': return 'text-blue-400';
+      case 'orcamento': return 'text-yellow-400';
+      default: return 'text-gray-400';
     }
   };
 
-  const StatusBadge = ({ status }) => (
-    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(status)}`}>
-      {status}
-    </span>
-  );
-
-  const TipoBadge = ({ tipo }) => (
-    <span className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getTipoColor(tipo)}`}>
-      {getTipoIcon(tipo)}
-      <span>{tipo?.toUpperCase()}</span>
-    </span>
-  );
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-gradient-luxury flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#FF2C68] mx-auto mb-4"></div>
-          <p className="text-white/60">Carregando clientes...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-4 md:space-y-6">
-      {/* Header responsivo */}
-      <div className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 p-4 md:p-6">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-white flex items-center space-x-3">
-              <Users className="w-6 md:w-8 h-6 md:h-8 text-[#FF2C68]" />
-              <span>Clientes</span>
-            </h1>
-            <p className="text-white/60 mt-2 text-sm md:text-base">
-              {clientesFiltrados.length} cliente{clientesFiltrados.length !== 1 ? 's' : ''} encontrado{clientesFiltrados.length !== 1 ? 's' : ''}
-            </p>
+    <div className="space-y-8">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-white">Gestão de Clientes</h1>
+          <p className="text-white/60 mt-2">Sistema completo de relacionamento com clientes</p>
+        </div>
+        {canCreateClients && (
+        <motion.button
+          onClick={() => {
+            setEditingCliente(null);
+            resetForm();
+            setShowModal(true);
+          }}
+          className="bg-[#FF2C68] hover:bg-[#FF2C68]/80 text-white px-6 py-3 rounded-xl flex items-center space-x-2 transition-all duration-200"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <Plus className="w-5 h-5" />
+          <span>Novo Cliente</span>
+        </motion.button>
+        )}
+        {!canCreateClients && (
+          <div className="flex items-center space-x-2 text-white/60">
+            <Eye className="w-5 h-5" />
+            <span>Modo Visualização</span>
+          </div>
+        )}
+      </div>
+
+      {/* Barra de busca e filtros */}
+      <div className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 p-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center space-x-4 flex-1">
+            <div className="flex-1 relative max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40 w-5 h-5" />
+              <input
+                type="text"
+                placeholder="Buscar por nome, telefone, email, CPF ou CNPJ..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
+              />
+            </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3">
-            {canCreateClients && (
-              <motion.button
-                onClick={() => {
-                  resetForm();
-                  setEditingCliente(null);
-                  setShowModal(true);
-                }}
-                className="bg-[#FF2C68] hover:bg-[#FF2C68]/80 text-white px-4 md:px-6 py-2 md:py-3 rounded-xl font-bold shadow-lg transition-all duration-300 flex items-center justify-center space-x-2 text-sm md:text-base"
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+          <div className="flex items-center space-x-2">
+            {/* Botões de visualização */}
+            <div className="flex bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl">
+              <button
+                onClick={() => setViewMode('grid')}
+                className={`p-3 rounded-l-xl transition-colors ${
+                  viewMode === 'grid' 
+                    ? 'bg-[#FF2C68] text-white' 
+                    : 'text-white/60 hover:text-white'
+                }`}
+                title="Visualização em grade"
               >
-                <Plus className="w-4 md:w-5 h-4 md:h-5" />
-                <span>Novo Cliente</span>
-              </motion.button>
-            )}
+                <Grid className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-3 rounded-r-xl transition-colors ${
+                  viewMode === 'list' 
+                    ? 'bg-[#FF2C68] text-white' 
+                    : 'text-white/60 hover:text-white'
+                }`}
+                title="Visualização em lista"
+              >
+                <List className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Botão de filtros */}
+            <button 
+              onClick={() => setShowFilters(!showFilters)}
+              className={`p-3 rounded-xl transition-colors ${
+                showFilters 
+                  ? 'bg-[#FF2C68] text-white' 
+                  : 'bg-[#FF2C68]/20 text-[#FF2C68] hover:bg-[#FF2C68]/30'
+              }`}
+              title="Filtros avançados"
+            >
+              <SlidersHorizontal className="w-5 h-5" />
+            </button>
           </div>
         </div>
 
-        {/* Controles de busca e filtros responsivos */}
-        <div className="mt-4 md:mt-6 space-y-4">
-          {/* Busca */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/40 w-4 h-4 md:w-5 md:h-5" />
-            <input
-              type="text"
-              placeholder="Buscar por nome, email, telefone, CPF ou CNPJ..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl px-10 md:px-12 py-2 md:py-3 text-white placeholder-white/40 focus:outline-none focus:border-[#FF2C68] transition-colors text-sm md:text-base"
-            />
-          </div>
-
-          {/* Controles responsivos */}
-          <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center">
-            {/* Filtros e visualização */}
-            <div className="flex flex-wrap gap-2">
-              <motion.button
-                onClick={() => setShowFilters(!showFilters)}
-                className="bg-[#0D0C0C]/50 border border-[#FF2C68]/30 text-white px-3 md:px-4 py-2 rounded-xl flex items-center space-x-2 hover:border-[#FF2C68]/50 transition-colors text-sm"
-                whileHover={{ scale: 1.02 }}
-              >
-                <SlidersHorizontal className="w-4 h-4" />
-                <span>Filtros</span>
-                {Object.values(filters).some(f => f !== 'todos' && f !== '') && (
-                  <span className="w-2 h-2 bg-[#FF2C68] rounded-full"></span>
-                )}
-              </motion.button>
-
-              {/* Toggle de visualização - apenas em desktop */}
-              <div className="hidden md:flex bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl p-1">
-                <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded-lg transition-colors ${
-                    viewMode === 'grid' 
-                      ? 'bg-[#FF2C68] text-white' 
-                      : 'text-white/60 hover:text-white'
-                  }`}
-                >
-                  <Grid className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`p-2 rounded-lg transition-colors ${
-                    viewMode === 'list' 
-                      ? 'bg-[#FF2C68] text-white' 
-                      : 'text-white/60 hover:text-white'
-                  }`}
-                >
-                  <List className="w-4 h-4" />
-                </button>
-              </div>
+        {/* Resumo dos resultados */}
+        <div className="flex items-center justify-between text-sm text-white/60">
+          <span>
+            {filteredClientes.length} {filteredClientes.length === 1 ? 'cliente encontrado' : 'clientes encontrados'}
+          </span>
+          
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <UserCheck className="w-4 h-4 text-green-400" />
+              <span>{clientes.filter(c => c.status === 'ativo').length} ativos</span>
             </div>
-
-            {/* Estatísticas rápidas */}
-            <div className="flex gap-2 text-xs">
-              <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded-lg">
-                {clientes.filter(c => c.status === 'ativo').length} ativos
-              </span>
-              <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-lg">
-                {clientes.filter(c => c.tipoDocumento === 'cpf').length} PF
-              </span>
-              <span className="px-2 py-1 bg-purple-500/20 text-purple-400 rounded-lg">
-                {clientes.filter(c => c.tipoDocumento === 'cnpj').length} PJ
-              </span>
+            <div className="flex items-center space-x-2">
+              <UserX className="w-4 h-4 text-red-400" />
+              <span>{clientes.filter(c => c.status === 'inativo').length} inativos</span>
+            </div>
+            <div className="flex items-center space-x-2">
+              <Users2 className="w-4 h-4 text-blue-400" />
+              <span>{clientes.filter(c => c.cnpj).length} empresas</span>
             </div>
           </div>
+        </div>
 
-          {/* Painel de filtros expansível */}
-          <AnimatePresence>
-            {showFilters && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                className="bg-[#0D0C0C]/30 rounded-xl p-4 border border-[#FF2C68]/20"
-              >
-                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        {/* Filtros avançados */}
+        <AnimatePresence>
+          {showFilters && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mt-4 pt-4 border-t border-[#FF2C68]/30"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                <div>
+                  <label className="block text-white/60 text-sm mb-2">Status</label>
                   <select
                     value={filters.status}
-                    onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                    className="bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#FF2C68]"
+                    onChange={(e) => setFilters({...filters, status: e.target.value})}
+                    className="w-full px-3 py-2 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg text-white text-sm focus:border-[#FF2C68] focus:outline-none"
                   >
-                    <option value="todos">Todos Status</option>
-                    <option value="ativo">Ativo</option>
-                    <option value="inativo">Inativo</option>
-                    <option value="bloqueado">Bloqueado</option>
+                    <option value="todos" className="bg-[#0D0C0C]">Todos</option>
+                    <option value="ativo" className="bg-[#0D0C0C]">Ativo</option>
+                    <option value="inativo" className="bg-[#0D0C0C]">Inativo</option>
+                    <option value="bloqueado" className="bg-[#0D0C0C]">Bloqueado</option>
                   </select>
+                </div>
 
+                <div>
+                  <label className="block text-white/60 text-sm mb-2">Documento</label>
                   <select
                     value={filters.tipoDocumento}
-                    onChange={(e) => setFilters(prev => ({ ...prev, tipoDocumento: e.target.value }))}
-                    className="bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg px-3 py-2 text-white text-xs focus:outline-none focus:border-[#FF2C68]"
+                    onChange={(e) => setFilters({...filters, tipoDocumento: e.target.value})}
+                    className="w-full px-3 py-2 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg text-white text-sm focus:border-[#FF2C68] focus:outline-none"
                   >
-                    <option value="todos">Todos Tipos</option>
-                    <option value="cpf">Pessoa Física</option>
-                    <option value="cnpj">Pessoa Jurídica</option>
+                    <option value="todos" className="bg-[#0D0C0C]">Todos</option>
+                    <option value="cpf" className="bg-[#0D0C0C]">CPF</option>
+                    <option value="cnpj" className="bg-[#0D0C0C]">CNPJ</option>
                   </select>
-
-                  <input
-                    type="text"
-                    placeholder="Cidade"
-                    value={filters.cidade}
-                    onChange={(e) => setFilters(prev => ({ ...prev, cidade: e.target.value }))}
-                    className="bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg px-3 py-2 text-white placeholder-white/40 text-xs focus:outline-none focus:border-[#FF2C68]"
-                  />
-
-                  <input
-                    type="text"
-                    placeholder="Estado"
-                    value={filters.estado}
-                    onChange={(e) => setFilters(prev => ({ ...prev, estado: e.target.value }))}
-                    className="bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg px-3 py-2 text-white placeholder-white/40 text-xs focus:outline-none focus:border-[#FF2C68]"
-                  />
-
-                  <button
-                    onClick={() => setFilters({
-                      status: 'todos',
-                      tipoDocumento: 'todos',
-                      cidade: '',
-                      estado: '',
-                      periodo: 'todos'
-                    })}
-                    className="bg-red-500/20 border border-red-500/30 text-red-400 rounded-lg px-3 py-2 text-xs hover:bg-red-500/30 transition-colors"
-                  >
-                    Limpar
-                  </button>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
+
+                <div>
+                  <label className="block text-white/60 text-sm mb-2">Cidade</label>
+                  <input
+                    type="text"
+                    placeholder="Filtrar por cidade"
+                    value={filters.cidade}
+                    onChange={(e) => setFilters({...filters, cidade: e.target.value})}
+                    className="w-full px-3 py-2 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg text-white text-sm placeholder-white/40 focus:border-[#FF2C68] focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-white/60 text-sm mb-2">Estado</label>
+                  <input
+                    type="text"
+                    placeholder="UF"
+                    value={filters.estado}
+                    onChange={(e) => setFilters({...filters, estado: e.target.value.toUpperCase()})}
+                    className="w-full px-3 py-2 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg text-white text-sm placeholder-white/40 focus:border-[#FF2C68] focus:outline-none"
+                    maxLength="2"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-white/60 text-sm mb-2">Período</label>
+                  <select
+                    value={filters.periodo}
+                    onChange={(e) => setFilters({...filters, periodo: e.target.value})}
+                    className="w-full px-3 py-2 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg text-white text-sm focus:border-[#FF2C68] focus:outline-none"
+                  >
+                    <option value="todos" className="bg-[#0D0C0C]">Todos</option>
+                    <option value="7dias" className="bg-[#0D0C0C]">Últimos 7 dias</option>
+                    <option value="30dias" className="bg-[#0D0C0C]">Últimos 30 dias</option>
+                    <option value="90dias" className="bg-[#0D0C0C]">Últimos 90 dias</option>
+                    <option value="1ano" className="bg-[#0D0C0C]">Último ano</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end mt-4">
+                <button
+                  onClick={() => setFilters({
+                    status: 'todos',
+                    tipoDocumento: 'todos',
+                    cidade: '',
+                    estado: '',
+                    periodo: 'todos'
+                  })}
+                  className="px-4 py-2 text-white/60 hover:text-white transition-colors text-sm"
+                >
+                  Limpar filtros
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
-      {/* Lista de clientes responsiva */}
-      {clientesFiltrados.length === 0 ? (
-        <div className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 p-8 md:p-12 text-center">
-          <Users className="w-16 md:w-20 h-16 md:h-20 text-white/20 mx-auto mb-4" />
-          <h3 className="text-lg md:text-xl font-bold text-white mb-2">
-            {searchTerm || Object.values(filters).some(f => f !== 'todos' && f !== '') 
-              ? 'Nenhum cliente encontrado' 
-              : 'Nenhum cliente cadastrado'
-            }
-          </h3>
-          <p className="text-white/60 mb-6 text-sm md:text-base">
-            {searchTerm || Object.values(filters).some(f => f !== 'todos' && f !== '')
-              ? 'Tente ajustar os filtros de busca'
-              : 'Comece cadastrando seu primeiro cliente'
-            }
-          </p>
-          {canCreateClients && !searchTerm && !Object.values(filters).some(f => f !== 'todos' && f !== '') && (
-            <motion.button
-              onClick={() => {
-                resetForm();
-                setEditingCliente(null);
-                setShowModal(true);
-              }}
-              className="bg-[#FF2C68] hover:bg-[#FF2C68]/80 text-white px-6 py-3 rounded-xl font-bold transition-all duration-300 flex items-center space-x-2 mx-auto"
+      {/* Lista de clientes */}
+      {viewMode === 'grid' ? (
+        <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+          {filteredClientes.map((cliente) => (
+            <motion.div
+              key={cliente.id}
+              className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 p-6 hover:border-[#FF2C68]/50 transition-all duration-200 cursor-pointer"
               whileHover={{ scale: 1.02 }}
+              onClick={() => {
+                setSelectedCliente(cliente);
+                setShowDetailModal(true);
+                setActiveTab('dados');
+              }}
             >
-              <Plus className="w-5 h-5" />
-              <span>Cadastrar Cliente</span>
-            </motion.button>
-          )}
-        </div>
-      ) : (
-        <>
-          {/* Grid/Cards para mobile e desktop */}
-          <div className={`grid gap-4 md:gap-6 ${
-            viewMode === 'grid' 
-              ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4' 
-              : 'grid-cols-1'
-          }`}>
-            {clientesFiltrados.map((cliente, index) => (
-              <motion.div
-                key={cliente.id}
-                className={`bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 hover:border-[#FF2C68]/50 transition-all duration-300 overflow-hidden ${
-                  viewMode === 'list' ? 'flex flex-col md:flex-row md:items-center' : ''
-                }`}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: index * 0.1 }}
-                whileHover={{ scale: 1.02 }}
-              >
-                {viewMode === 'grid' ? (
-                  /* Card Mode */
-                  <div className="p-4 md:p-6">
-                    {/* Header do card */}
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-bold text-white truncate">
-                          {cliente.nome || cliente.razaoSocial}
-                        </h3>
-                        {cliente.nomeFantasia && cliente.nomeFantasia !== cliente.razaoSocial && (
-                          <p className="text-sm text-white/60 truncate">
-                            {cliente.nomeFantasia}
-                          </p>
-                        )}
-                      </div>
-                      <div className="flex items-center space-x-2 ml-2">
-                        <StatusBadge status={cliente.status} />
-                        <TipoBadge tipo={cliente.tipoDocumento} />
-                      </div>
-                    </div>
-
-                    {/* Informações do card */}
-                    <div className="space-y-3 mb-4">
-                      {cliente.telefone && (
-                        <div className="flex items-center space-x-2 text-sm">
-                          <Phone className="w-4 h-4 text-[#FF2C68] flex-shrink-0" />
-                          <span className="text-white/80 truncate">{cliente.telefone}</span>
-                        </div>
-                      )}
-                      
-                      {cliente.email && (
-                        <div className="flex items-center space-x-2 text-sm">
-                          <Mail className="w-4 h-4 text-[#FF2C68] flex-shrink-0" />
-                          <span className="text-white/80 truncate">{cliente.email}</span>
-                        </div>
-                      )}
-                      
-                      {(cliente.cidade || cliente.estado) && (
-                        <div className="flex items-center space-x-2 text-sm">
-                          <MapPin className="w-4 h-4 text-[#FF2C68] flex-shrink-0" />
-                          <span className="text-white/80 truncate">
-                            {[cliente.cidade, cliente.estado].filter(Boolean).join(', ')}
-                          </span>
-                        </div>
-                      )}
-
-                      {(cliente.cpf || cliente.cnpj) && (
-                        <div className="flex items-center space-x-2 text-sm">
-                          <FileText className="w-4 h-4 text-[#FF2C68] flex-shrink-0" />
-                          <span className="text-white/80 font-mono">
-                            {cliente.tipoDocumento === 'cpf' ? formatCPF(cliente.cpf) : formatCNPJ(cliente.cnpj)}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Ações do card */}
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <motion.button
-                        onClick={() => {
-                          setSelectedCliente(cliente);
-                          setShowDetailModal(true);
-                          setActiveTab('dados');
-                        }}
-                        className="flex-1 bg-[#FF2C68]/20 hover:bg-[#FF2C68]/30 text-[#FF2C68] px-3 py-2 rounded-lg font-medium transition-colors flex items-center justify-center space-x-2 text-sm"
-                        whileHover={{ scale: 1.02 }}
-                        whileTap={{ scale: 0.98 }}
-                      >
-                        <Eye className="w-4 h-4" />
-                        <span>Ver Detalhes</span>
-                      </motion.button>
-
-                      {cliente.telefone && (
-                        <motion.button
-                          onClick={() => {
-                            setSelectedCliente(cliente);
-                            setWhatsAppTemplate('geral');
-                            setShowWhatsAppModal(true);
-                          }}
-                          className="bg-green-500/20 hover:bg-green-500/30 text-green-400 px-3 py-2 rounded-lg transition-colors flex items-center justify-center space-x-2 text-sm"
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                        >
-                          <MessageCircle className="w-4 h-4" />
-                          <span className="hidden sm:inline">WhatsApp</span>
-                        </motion.button>
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center space-x-3">
+                  <div className="w-12 h-12 bg-[#FF2C68] rounded-xl flex items-center justify-center">
+                    {cliente.cnpj ? <Building className="w-6 h-6 text-white" /> : <User className="w-6 h-6 text-white" />}
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-white">
+                      {cliente.cnpj ? (cliente.nomeFantasia || cliente.razaoSocial || cliente.nome) : cliente.nome}
+                    </h3>
+                    <div className="flex items-center space-x-2">
+                      <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getStatusColor(cliente.status)}`}>
+                        {cliente.status?.toUpperCase()}
+                      </span>
+                      {cliente.cnpj && (
+                        <span className="px-2 py-1 rounded-lg text-xs font-medium bg-blue-500/20 text-blue-400">
+                          EMPRESA
+                        </span>
                       )}
                     </div>
                   </div>
-                ) : (
-                  /* List Mode */
-                  <div className="flex flex-col md:flex-row md:items-center w-full p-4 md:p-6">
-                    {/* Informações principais */}
-                    <div className="flex-1 min-w-0 mb-4 md:mb-0">
-                      <div className="flex flex-col md:flex-row md:items-center md:space-x-4">
-                        <div className="flex-1 min-w-0 mb-2 md:mb-0">
-                          <h3 className="text-lg font-bold text-white truncate">
-                            {cliente.nome || cliente.razaoSocial}
-                          </h3>
-                          <div className="flex flex-wrap items-center gap-2 mt-1">
-                            <StatusBadge status={cliente.status} />
-                            <TipoBadge tipo={cliente.tipoDocumento} />
-                          </div>
-                        </div>
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedCliente(cliente);
+                      setWhatsAppTemplate('geral');
+                      setShowWhatsAppModal(true);
+                    }}
+                    className="p-2 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors"
+                    title="Enviar WhatsApp"
+                  >
+                    <MessageCircle className="w-4 h-4" />
+                  </button>
+                  {canEditClients && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingCliente(cliente);
+                      // Preparar formulário com dados do cliente
+                      const formData = {
+                        ...cliente,
+                        tipoDocumento: cliente.cnpj ? 'cnpj' : 'cpf'
+                      };
+                      setClienteForm(formData);
+                      setShowModal(true);
+                    }}
+                    className="p-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors"
+                      title="Editar Cliente"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                  </button>
+                  )}
+                  {!canEditClients && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toast.info('Você não tem permissão para editar clientes', {
+                          style: {
+                            background: '#1e293b',
+                            color: '#ffffff',
+                            border: '1px solid #3b82f6',
+                          },
+                        });
+                      }}
+                      className="p-2 bg-gray-500/20 text-gray-400 rounded-lg cursor-not-allowed"
+                      title="Apenas visualização"
+                    >
+                      <Eye className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 text-sm">
-                          {cliente.telefone && (
-                            <div className="flex items-center space-x-1">
-                              <Phone className="w-3 h-3 text-[#FF2C68]" />
-                              <span className="text-white/80">{cliente.telefone}</span>
-                            </div>
-                          )}
-                          
-                          {cliente.email && (
-                            <div className="flex items-center space-x-1">
-                              <Mail className="w-3 h-3 text-[#FF2C68]" />
-                              <span className="text-white/80 truncate">{cliente.email}</span>
-                            </div>
-                          )}
-                          
-                          {(cliente.cidade || cliente.estado) && (
-                            <div className="flex items-center space-x-1">
-                              <MapPin className="w-3 h-3 text-[#FF2C68]" />
-                              <span className="text-white/80 truncate">
-                                {[cliente.cidade, cliente.estado].filter(Boolean).join(', ')}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Ações */}
-                    <div className="flex space-x-2 md:ml-4">
-                      <motion.button
-                        onClick={() => {
-                          setSelectedCliente(cliente);
-                          setShowDetailModal(true);
-                          setActiveTab('dados');
-                        }}
-                        className="bg-[#FF2C68]/20 hover:bg-[#FF2C68]/30 text-[#FF2C68] px-3 py-2 rounded-lg transition-colors flex items-center space-x-1 text-sm"
-                        whileHover={{ scale: 1.02 }}
-                      >
-                        <Eye className="w-4 h-4" />
-                        <span className="hidden sm:inline">Detalhes</span>
-                      </motion.button>
-
-                      {cliente.telefone && (
-                        <motion.button
-                          onClick={() => {
-                            setSelectedCliente(cliente);
-                            setWhatsAppTemplate('geral');
-                            setShowWhatsAppModal(true);
-                          }}
-                          className="bg-green-500/20 hover:bg-green-500/30 text-green-400 px-3 py-2 rounded-lg transition-colors flex items-center space-x-1 text-sm"
-                          whileHover={{ scale: 1.02 }}
-                        >
-                          <MessageCircle className="w-4 h-4" />
-                          <span className="hidden sm:inline">WhatsApp</span>
-                        </motion.button>
-                      )}
-                    </div>
+              <div className="space-y-3">
+                <div className="flex items-center space-x-2 text-white/60">
+                  <Phone className="w-4 h-4" />
+                  <span>{cliente.telefone}</span>
+                </div>
+                
+                {cliente.email && (
+                  <div className="flex items-center space-x-2 text-white/60">
+                    <Mail className="w-4 h-4" />
+                    <span>{cliente.email}</span>
                   </div>
                 )}
-              </motion.div>
-            ))}
+
+                {(cliente.cpf || cliente.cnpj) && (
+                  <div className="flex items-center space-x-2 text-white/60">
+                    <CreditCard className="w-4 h-4" />
+                    <span>{cliente.cnpj ? `CNPJ: ${cliente.cnpj}` : `CPF: ${cliente.cpf}`}</span>
+                  </div>
+                )}
+                
+                {cliente.cidade && (
+                  <div className="flex items-center space-x-2 text-white/60">
+                    <MapPin className="w-4 h-4" />
+                    <span>{cliente.cidade}, {cliente.estado}</span>
+                  </div>
+                )}
+
+                <div className="flex items-center space-x-2 text-white/60">
+                  <Calendar className="w-4 h-4" />
+                  <span>Cliente desde {cliente.createdAt?.toDate?.()?.toLocaleDateString('pt-BR') || 'N/A'}</span>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      ) : (
+        <div className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-[#FF2C68]/10 border-b border-[#FF2C68]/30">
+                <tr>
+                  <th className="text-left p-4 text-white font-medium">Cliente</th>
+                  <th className="text-left p-4 text-white font-medium">Documento</th>
+                  <th className="text-left p-4 text-white font-medium">Contato</th>
+                  <th className="text-left p-4 text-white font-medium">Localização</th>
+                  <th className="text-left p-4 text-white font-medium">Status</th>
+                  <th className="text-left p-4 text-white font-medium">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredClientes.map((cliente) => (
+                  <motion.tr
+                    key={cliente.id}
+                    className="border-b border-[#FF2C68]/10 hover:bg-[#FF2C68]/5 transition-colors cursor-pointer"
+                    whileHover={{ backgroundColor: 'rgba(255, 44, 104, 0.05)' }}
+                    onClick={() => {
+                      setSelectedCliente(cliente);
+                      setShowDetailModal(true);
+                      setActiveTab('dados');
+                    }}
+                  >
+                    <td className="p-4">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-[#FF2C68] rounded-lg flex items-center justify-center">
+                          {cliente.cnpj ? <Building className="w-5 h-5 text-white" /> : <User className="w-5 h-5 text-white" />}
+                        </div>
+                        <div>
+                          <div className="text-white font-medium">
+                            {cliente.cnpj ? (cliente.nomeFantasia || cliente.razaoSocial || cliente.nome) : cliente.nome}
+                          </div>
+                          {cliente.cnpj && cliente.razaoSocial && cliente.nomeFantasia && cliente.razaoSocial !== cliente.nomeFantasia && (
+                            <div className="text-white/60 text-sm">{cliente.razaoSocial}</div>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="text-white/80">
+                        {cliente.cnpj ? (
+                          <div>
+                            <div className="text-sm">CNPJ: {cliente.cnpj}</div>
+                            {cliente.inscricaoEstadual && (
+                              <div className="text-xs text-white/60">IE: {cliente.inscricaoEstadual}</div>
+                            )}
+                          </div>
+                        ) : (
+                          cliente.cpf && <div className="text-sm">CPF: {cliente.cpf}</div>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="space-y-1">
+                        <div className="text-white/80 text-sm">{cliente.telefone}</div>
+                        {cliente.email && <div className="text-white/60 text-xs">{cliente.email}</div>}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="text-white/80 text-sm">
+                        {cliente.cidade && `${cliente.cidade}, ${cliente.estado}`}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex items-center space-x-2">
+                        <span className={`px-2 py-1 rounded-lg text-xs font-medium ${getStatusColor(cliente.status)}`}>
+                          {cliente.status?.toUpperCase()}
+                        </span>
+                        {cliente.cnpj && (
+                          <span className="px-2 py-1 rounded-lg text-xs font-medium bg-blue-500/20 text-blue-400">
+                            EMPRESA
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4">
+                      <div className="flex space-x-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedCliente(cliente);
+                            setWhatsAppTemplate('geral');
+                            setShowWhatsAppModal(true);
+                          }}
+                          className="p-2 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-colors"
+                          title="Enviar WhatsApp"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                        </button>
+                        {canEditClients && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingCliente(cliente);
+                            // Preparar formulário com dados do cliente
+                            const formData = {
+                              ...cliente,
+                              tipoDocumento: cliente.cnpj ? 'cnpj' : 'cpf'
+                            };
+                            setClienteForm(formData);
+                            setShowModal(true);
+                          }}
+                          className="p-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors"
+                            title="Editar Cliente"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        )}
+                        {!canEditClients && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toast.info('Você não tem permissão para editar clientes', {
+                                style: {
+                                  background: '#1e293b',
+                                  color: '#ffffff',
+                                  border: '1px solid #3b82f6',
+                                },
+                              });
+                            }}
+                            className="p-2 bg-gray-500/20 text-gray-400 rounded-lg cursor-not-allowed"
+                            title="Apenas visualização"
+                          >
+                            <Eye className="w-4 h-4" />
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-        </>
+        </div>
+      )}
+
+      {filteredClientes.length === 0 && searchTerm && (
+        <div className="text-center py-12">
+          <Users className="w-12 h-12 text-white/30 mx-auto mb-4" />
+          <p className="text-white/60">Nenhum cliente encontrado para "{searchTerm}"</p>
+        </div>
+      )}
+
+      {clientes.length === 0 && !loading && (
+        <div className="text-center py-12">
+          <Users className="w-12 h-12 text-white/30 mx-auto mb-4" />
+          <p className="text-white/60 text-lg">Nenhum cliente cadastrado</p>
+          <p className="text-white/40 text-sm mt-2">Comece adicionando seu primeiro cliente</p>
+        </div>
       )}
 
       {/* Modal de Cadastro/Edição */}
@@ -1530,24 +1633,24 @@ export default function Clientes() {
 
                     {/* Novo comentário - apenas para usuários com permissão */}
                     {canEditClients && (
-                      <div className="bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl p-4">
-                        <textarea
-                          value={novoComentario}
-                          onChange={(e) => setNovoComentario(e.target.value)}
-                          className="w-full px-3 py-2 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
-                          placeholder="Adicionar novo comentário..."
-                          rows="3"
-                        />
-                        <div className="flex justify-end mt-3">
-                          <button
-                            onClick={adicionarComentario}
-                            className="px-4 py-2 bg-[#FF2C68] text-white rounded-lg hover:bg-[#FF2C68]/80 transition-colors flex items-center space-x-2"
-                          >
-                            <MessageCircle className="w-4 h-4" />
-                            <span>Adicionar</span>
-                          </button>
-                        </div>
+                    <div className="bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl p-4">
+                      <textarea
+                        value={novoComentario}
+                        onChange={(e) => setNovoComentario(e.target.value)}
+                        className="w-full px-3 py-2 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
+                        placeholder="Adicionar novo comentário..."
+                        rows="3"
+                      />
+                      <div className="flex justify-end mt-3">
+                        <button
+                          onClick={adicionarComentario}
+                          className="px-4 py-2 bg-[#FF2C68] text-white rounded-lg hover:bg-[#FF2C68]/80 transition-colors flex items-center space-x-2"
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                          <span>Adicionar</span>
+                        </button>
                       </div>
+                    </div>
                     )}
 
                     {/* Mensagem para usuários sem permissão */}
@@ -1602,74 +1705,74 @@ export default function Clientes() {
 
                     {/* Novo equipamento - apenas para usuários com permissão */}
                     {canEditClients && (
-                      <div className="bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl p-4">
-                        <h4 className="text-white font-medium mb-3">Adicionar Equipamento</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                          <div>
-                            <input
-                              type="text"
-                              placeholder="Tipo (ex: Smartphone)"
-                              value={novoEquipamento.tipo}
-                              onChange={(e) => setNovoEquipamento({...novoEquipamento, tipo: e.target.value})}
-                              className="w-full px-3 py-2 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
-                            />
-                          </div>
-                          <div>
-                            <input
-                              type="text"
-                              placeholder="Marca (ex: Apple)"
-                              value={novoEquipamento.marca}
-                              onChange={(e) => setNovoEquipamento({...novoEquipamento, marca: e.target.value})}
-                              className="w-full px-3 py-2 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
-                            />
-                          </div>
-                          <div>
-                            <input
-                              type="text"
-                              placeholder="Modelo (ex: iPhone 15)"
-                              value={novoEquipamento.modelo}
-                              onChange={(e) => setNovoEquipamento({...novoEquipamento, modelo: e.target.value})}
-                              className="w-full px-3 py-2 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
-                            />
-                          </div>
-                          <div>
-                            <input
-                              type="text"
-                              placeholder="Cor"
-                              value={novoEquipamento.cor}
-                              onChange={(e) => setNovoEquipamento({...novoEquipamento, cor: e.target.value})}
-                              className="w-full px-3 py-2 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
-                            />
-                          </div>
-                          <div>
-                            <input
-                              type="text"
-                              placeholder="IMEI/Série"
-                              value={novoEquipamento.imei}
-                              onChange={(e) => setNovoEquipamento({...novoEquipamento, imei: e.target.value})}
-                              className="w-full px-3 py-2 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
-                            />
-                          </div>
-                          <div>
-                            <button
-                              onClick={adicionarEquipamento}
-                              className="w-full px-3 py-2 bg-[#FF2C68] text-white rounded-lg hover:bg-[#FF2C68]/80 transition-colors flex items-center justify-center space-x-2"
-                            >
-                              <Plus className="w-4 h-4" />
-                              <span>Adicionar</span>
-                            </button>
-                          </div>
-                        </div>
-                        <div className="mt-3">
-                          <textarea
-                            placeholder="Observações sobre o equipamento..."
-                            value={novoEquipamento.observacoes}
-                            onChange={(e) => setNovoEquipamento({...novoEquipamento, observacoes: e.target.value})}
+                    <div className="bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl p-4">
+                      <h4 className="text-white font-medium mb-3">Adicionar Equipamento</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <input
+                            type="text"
+                            placeholder="Tipo (ex: Smartphone)"
+                            value={novoEquipamento.tipo}
+                            onChange={(e) => setNovoEquipamento({...novoEquipamento, tipo: e.target.value})}
                             className="w-full px-3 py-2 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
-                            rows="2"
                           />
                         </div>
+                        <div>
+                          <input
+                            type="text"
+                            placeholder="Marca (ex: Apple)"
+                            value={novoEquipamento.marca}
+                            onChange={(e) => setNovoEquipamento({...novoEquipamento, marca: e.target.value})}
+                            className="w-full px-3 py-2 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
+                          />
+                        </div>
+                        <div>
+                          <input
+                            type="text"
+                            placeholder="Modelo (ex: iPhone 15)"
+                            value={novoEquipamento.modelo}
+                            onChange={(e) => setNovoEquipamento({...novoEquipamento, modelo: e.target.value})}
+                            className="w-full px-3 py-2 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
+                          />
+                        </div>
+                        <div>
+                          <input
+                            type="text"
+                            placeholder="Cor"
+                            value={novoEquipamento.cor}
+                            onChange={(e) => setNovoEquipamento({...novoEquipamento, cor: e.target.value})}
+                            className="w-full px-3 py-2 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
+                          />
+                        </div>
+                        <div>
+                          <input
+                            type="text"
+                            placeholder="IMEI/Série"
+                            value={novoEquipamento.imei}
+                            onChange={(e) => setNovoEquipamento({...novoEquipamento, imei: e.target.value})}
+                            className="w-full px-3 py-2 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
+                          />
+                        </div>
+                        <div>
+                          <button
+                            onClick={adicionarEquipamento}
+                            className="w-full px-3 py-2 bg-[#FF2C68] text-white rounded-lg hover:bg-[#FF2C68]/80 transition-colors flex items-center justify-center space-x-2"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span>Adicionar</span>
+                          </button>
+                        </div>
                       </div>
+                      <div className="mt-3">
+                        <textarea
+                          placeholder="Observações sobre o equipamento..."
+                          value={novoEquipamento.observacoes}
+                          onChange={(e) => setNovoEquipamento({...novoEquipamento, observacoes: e.target.value})}
+                          className="w-full px-3 py-2 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
+                          rows="2"
+                        />
+                      </div>
+                    </div>
                     )}
 
                     {/* Mensagem para usuários sem permissão */}
@@ -1735,27 +1838,27 @@ export default function Clientes() {
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-bold text-white">Documentos e Arquivos</h3>
                       {canEditClients && (
-                        <div>
-                          <input
-                            type="file"
-                            id="fileUpload"
-                            multiple
-                            onChange={uploadArquivo}
-                            className="hidden"
-                            accept="image/*,.pdf,.doc,.docx,.txt"
-                          />
-                          <label
-                            htmlFor="fileUpload"
-                            className="px-4 py-2 bg-[#FF2C68] text-white rounded-lg hover:bg-[#FF2C68]/80 transition-colors flex items-center space-x-2 cursor-pointer"
-                          >
-                            {uploadingFile ? (
-                              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            ) : (
-                              <Upload className="w-4 h-4" />
-                            )}
-                            <span>{uploadingFile ? 'Enviando...' : 'Upload'}</span>
-                          </label>
-                        </div>
+                      <div>
+                        <input
+                          type="file"
+                          id="fileUpload"
+                          multiple
+                          onChange={uploadArquivo}
+                          className="hidden"
+                          accept="image/*,.pdf,.doc,.docx,.txt"
+                        />
+                        <label
+                          htmlFor="fileUpload"
+                          className="px-4 py-2 bg-[#FF2C68] text-white rounded-lg hover:bg-[#FF2C68]/80 transition-colors flex items-center space-x-2 cursor-pointer"
+                        >
+                          {uploadingFile ? (
+                            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          ) : (
+                            <Upload className="w-4 h-4" />
+                          )}
+                          <span>{uploadingFile ? 'Enviando...' : 'Upload'}</span>
+                        </label>
+                      </div>
                       )}
                       {!canEditClients && (
                         <div className="flex items-center space-x-2 text-white/60">
@@ -1815,13 +1918,28 @@ export default function Clientes() {
         )}
       </AnimatePresence>
 
-      {/* Modal WhatsApp */}
-      <WhatsAppModal
-        isOpen={showWhatsAppModal}
-        onClose={() => setShowWhatsAppModal(false)}
-        cliente={selectedCliente}
-        template={whatsAppTemplate}
-      />
-    </div>
-  );
-} 
+      {filteredClientes.length === 0 && searchTerm && (
+        <div className="text-center py-12">
+          <Users className="w-12 h-12 text-white/30 mx-auto mb-4" />
+          <p className="text-white/60">Nenhum cliente encontrado para "{searchTerm}"</p>
+        </div>
+      )}
+
+             {clientes.length === 0 && !loading && (
+         <div className="text-center py-12">
+           <Users className="w-12 h-12 text-white/30 mx-auto mb-4" />
+           <p className="text-white/60 text-lg">Nenhum cliente cadastrado</p>
+           <p className="text-white/40 text-sm mt-2">Comece adicionando seu primeiro cliente</p>
+         </div>
+       )}
+
+       {/* Modal WhatsApp */}
+       <WhatsAppModal
+         isOpen={showWhatsAppModal}
+         onClose={() => setShowWhatsAppModal(false)}
+         cliente={selectedCliente}
+         template={whatsAppTemplate}
+       />
+     </div>
+   );
+ } 

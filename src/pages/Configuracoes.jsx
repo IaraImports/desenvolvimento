@@ -331,12 +331,12 @@ export default function Configuracoes() {
 
       if (editingItem) {
         // Editando usuário existente - apenas atualizar Firestore
-        const userData = {
-          ...userForm,
-          updatedAt: new Date(),
-          updatedBy: user.uid
-        };
-        
+      const userData = {
+        ...userForm,
+        updatedAt: new Date(),
+        updatedBy: user.uid
+      };
+
         // Remover senha do update se estiver vazia (não alterar)
         if (!userData.password) {
           delete userData.password;
@@ -695,20 +695,20 @@ export default function Configuracoes() {
           <p className="text-white/60">Controle total dos usuários do sistema</p>
         </div>
         <motion.button
-          onClick={() => {
-            setEditingItem(null);
-            setUserForm({
-              email: '',
-              displayName: '',
-              password: '',
-              level: 'VENDEDOR',
-              permissions: [],
-              active: true
-            });
-            setPasswordMode('manual');
-            setShowPassword(false);
-            setShowUserModal(true);
-          }}
+                          onClick={() => {
+                  setEditingItem(null);
+                  setUserForm({
+                    email: '',
+                    displayName: '',
+                    password: '',
+                    level: 'VENDEDOR',
+                    permissions: [],
+                    active: true
+                  });
+                  setPasswordMode('manual');
+                  setShowPassword(false);
+                  setShowUserModal(true);
+                }}
           className="bg-[#FF2C68] hover:bg-[#FF2C68]/80 text-white px-6 py-3 rounded-xl flex items-center space-x-2 transition-all duration-200"
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
