@@ -20,7 +20,15 @@
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="IARA HUB" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-orientation" content="landscape" />
     <meta name="application-name" content="IARA HUB" />
+    
+    <!-- 📱 iOS Specific Icons -->
+    <link rel="apple-touch-icon" href="/icons/icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/icons/icon-128x128.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/icons/icon-152x152.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png" />
     
     <!-- 📄 Manifest -->
     <link rel="manifest" href="/manifest.json" />
@@ -80,49 +88,93 @@
 
         // 📱 Detectar instalação PWA
         let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', (e) => {
-          e.preventDefault();
-          deferredPrompt = e;
-          console.log('📱 PWA pode ser instalado');
+        let installButton = null;
+
+        // Função para criar botão de instalação
+        function createInstallButton(isIOS = false) {
+          if (installButton) return; // Evitar duplicar
           
-          // Criar botão de instalação
-          const installButton = document.createElement('button');
-          installButton.textContent = '📱 Instalar App';
-          installButton.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 1000;
-            background: linear-gradient(135deg, #FF2C68, #FF6B9D);
-            color: white;
-            border: none;
-            padding: 12px 20px;
-            border-radius: 25px;
-            font-weight: bold;
-            box-shadow: 0 4px 15px rgba(255, 44, 104, 0.3);
-            cursor: pointer;
-            transition: all 0.3s ease;
+          installButton = document.createElement('div');
+          installButton.innerHTML = `
+            <div id="install-btn" style="
+              position: fixed;
+              bottom: 20px;
+              right: 20px;
+              z-index: 10000;
+              background: linear-gradient(135deg, #FF2C68, #FF6B9D);
+              color: white;
+              border: none;
+              padding: 18px 28px;
+              border-radius: 35px;
+              font-weight: bold;
+              box-shadow: 0 8px 25px rgba(255, 44, 104, 0.5);
+              cursor: pointer;
+              transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+              font-family: 'Inter', Arial, sans-serif;
+              font-size: 14px;
+              text-align: center;
+              max-width: 220px;
+              animation: fadeInUp 0.5s ease-out, pulse 3s infinite 1s;
+              border: 2px solid rgba(255, 255, 255, 0.2);
+            " onclick="handleInstallClick()" onmouseover="this.style.transform='scale(1.05) translateY(-2px)'" onmouseout="this.style.transform='scale(1) translateY(0)'">"
+              📱 ${isIOS ? 'Adicionar à Tela Inicial' : 'Instalar App'}
+              <div style="font-size: 12px; margin-top: 5px; opacity: 0.9;">
+                ${isIOS ? 'Toque em ⬆️ → Adicionar' : 'Clique para instalar'}
+              </div>
+            </div>
           `;
           
-          installButton.onclick = () => {
+          document.body.appendChild(installButton);
+        }
+
+        // Função global para lidar com instalação
+        window.handleInstallClick = () => {
+          if (deferredPrompt) {
             deferredPrompt.prompt();
             deferredPrompt.userChoice.then((choiceResult) => {
               if (choiceResult.outcome === 'accepted') {
                 console.log('✅ PWA instalado');
               }
               deferredPrompt = null;
-              installButton.remove();
             });
-          };
-          
-          document.body.appendChild(installButton);
-          
-          // Remover botão após 10 segundos se não clicar
+          } else {
+            // Detectar iOS
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            
+            // Para iOS, mostrar instruções mais detalhadas
+            const instructions = isIOS ? 
+              'Para instalar no iPhone/iPad:\n\n1. Toque no botão de compartilhar ⬆️ (na barra inferior)\n2. Role para baixo e selecione "Adicionar à Tela de Início"\n3. Toque em "Adicionar" no canto superior direito\n\nO app aparecerá na sua tela inicial!' :
+              'Para instalar:\n\n1. Abra o menu do navegador (⋮)\n2. Selecione "Adicionar à tela inicial" ou "Instalar app"\n3. Confirme a instalação\n\nO app será instalado no seu dispositivo!';
+            
+            alert(instructions);
+          }
+        };
+
+        window.addEventListener('beforeinstallprompt', (e) => {
+          e.preventDefault();
+          deferredPrompt = e;
+          console.log('📱 PWA pode ser instalado');
+          createInstallButton(false);
+        });
+
+        // Para iOS e dispositivos que não disparam beforeinstallprompt
+        window.addEventListener('load', () => {
           setTimeout(() => {
-            if (installButton.parentNode) {
-              installButton.remove();
+            // Detectar iOS
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            // Detectar se é standalone (já instalado)
+            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+            
+            // Só não mostrar se já estiver em modo standalone (já instalado)
+            if (!isStandalone && !deferredPrompt) {
+              if (isIOS) {
+                createInstallButton(true);
+              } else {
+                // Para Android sem beforeinstallprompt
+                createInstallButton(false);
+              }
             }
-          }, 10000);
+          }, 2000); // Aguardar 2 segundos para aparecer mais rápido
         });
 
         // 📱 Detectar quando foi instalado
