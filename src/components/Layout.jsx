@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { NotificationProvider, NotificationPanel } from './NotificationSystem';
 import SystemMonitor from './SystemMonitor';
+import OrientationHelper from './OrientationHelper';
 import {
   Home,
   Package,
@@ -532,6 +533,9 @@ function LayoutContent({
 
       {/* Monitor do Sistema */}
       <SystemMonitor />
+      
+      {/* Helper de Orientação para Mobile */}
+      <OrientationHelper />
     </div>
   );
 } 
