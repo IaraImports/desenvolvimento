@@ -2,12 +2,145 @@
 <html lang="pt-BR">
   <head>
     <meta charset="UTF-8" />
+    
+    <!-- 📱 PWA Meta Tags -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="description" content="Sistema completo de gestão empresarial com chat interno, vendas, estoque e relatórios" />
+    <meta name="keywords" content="gestão, vendas, estoque, chat, relatórios, empresa, sistema" />
+    <meta name="author" content="Iara Imports" />
+    
+    <!-- 🎨 Theme Colors -->
+    <meta name="theme-color" content="#FF2C68" />
+    <meta name="msapplication-navbutton-color" content="#FF2C68" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="msapplication-TileColor" content="#0D0C0C" />
+    
+    <!-- 📱 PWA App Configuration -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="IaraImports" />
+    <meta name="application-name" content="IaraImports" />
+    
+    <!-- 📄 Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+    
+    <!-- 🖼️ Icons -->
     <link rel="icon" type="image/svg+xml" href="/faticon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>IARA HUB - GESTAO INTELIGENTE</title>
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/icon-192x192.png" />
+    <link rel="icon" type="image/png" sizes="32x32" href="/icons/icon-192x192.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/icon-192x192.png" />
+    <link rel="mask-icon" href="/icons/icon-192x192.png" color="#FF2C68" />
+    
+    <!-- 🔄 Preload Critical Resources -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://firestore.googleapis.com" />
+    <link rel="dns-prefetch" href="https://firebase.googleapis.com" />
+    
+    <!-- 📊 Open Graph -->
+    <meta property="og:title" content="Sistema de Gestão Iara Imports" />
+    <meta property="og:description" content="Sistema completo de gestão empresarial" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/icons/icon-512x512.png" />
+    
+    <!-- 🐦 Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Sistema de Gestão Iara Imports" />
+    <meta name="twitter:description" content="Sistema completo de gestão empresarial" />
+    <meta name="twitter:image" content="/icons/icon-512x512.png" />
+    
+    <title>📱 IARA HUB - GESTAO INTELIGENTE</title>
   </head>
   <body>
     <div id="root"></div>
+    
+    <!-- 🚀 Service Worker Registration -->
+    <script>
+      if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+          navigator.serviceWorker.register('/sw.js')
+            .then((registration) => {
+              console.log('✅ SW registrado:', registration.scope);
+              
+              // Notificar sobre atualizações
+              registration.addEventListener('updatefound', () => {
+                const newWorker = registration.installing;
+                newWorker.addEventListener('statechange', () => {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    console.log('🔄 Nova versão disponível');
+                    // Aqui você pode mostrar um toast para o usuário atualizar
+                  }
+                });
+              });
+            })
+            .catch((error) => {
+              console.error('❌ Erro no SW:', error);
+            });
+        });
+
+        // 📱 Detectar instalação PWA
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+          e.preventDefault();
+          deferredPrompt = e;
+          console.log('📱 PWA pode ser instalado');
+          
+          // Criar botão de instalação
+          const installButton = document.createElement('button');
+          installButton.textContent = '📱 Instalar App';
+          installButton.style.cssText = `
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 1000;
+            background: linear-gradient(135deg, #FF2C68, #FF6B9D);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 25px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(255, 44, 104, 0.3);
+            cursor: pointer;
+            transition: all 0.3s ease;
+          `;
+          
+          installButton.onclick = () => {
+            deferredPrompt.prompt();
+            deferredPrompt.userChoice.then((choiceResult) => {
+              if (choiceResult.outcome === 'accepted') {
+                console.log('✅ PWA instalado');
+              }
+              deferredPrompt = null;
+              installButton.remove();
+            });
+          };
+          
+          document.body.appendChild(installButton);
+          
+          // Remover botão após 10 segundos se não clicar
+          setTimeout(() => {
+            if (installButton.parentNode) {
+              installButton.remove();
+            }
+          }, 10000);
+        });
+
+        // 📱 Detectar quando foi instalado
+        window.addEventListener('appinstalled', () => {
+          console.log('🎉 PWA foi instalado com sucesso!');
+          deferredPrompt = null;
+        });
+      }
+
+      // 🔔 Solicitar permissão para notificações
+      if ('Notification' in window && navigator.serviceWorker) {
+        if (Notification.permission === 'default') {
+          Notification.requestPermission().then((permission) => {
+            console.log('🔔 Permissão de notificação:', permission);
+          });
+        }
+      }
+    </script>
+    
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>

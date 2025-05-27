@@ -1,0 +1,285 @@
+/* 📱 MOBILE RESPONSIVO - SEM ALTERAR FUNCIONALIDADES */
+
+/* Ajustes gerais para mobile */
+@media (max-width: 768px) {
+  /* Container principal do chat */
+  .chat-container {
+    height: 100vh !important;
+    border-radius: 0 !important;
+    border: none !important;
+  }
+
+  /* Sidebar conversas em mobile */
+  .chat-sidebar {
+    position: fixed !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    z-index: 50 !important;
+    transform: translateX(-100%) !important;
+    transition: transform 0.3s ease !important;
+  }
+
+  .chat-sidebar.active {
+    transform: translateX(0) !important;
+  }
+
+  /* Área principal do chat */
+  .chat-main {
+    width: 100% !important;
+    min-width: 100% !important;
+  }
+
+  /* Header do chat em mobile */
+  .chat-header {
+    padding: 12px 16px !important;
+    flex-wrap: wrap !important;
+  }
+
+  .chat-header-title {
+    font-size: 16px !important;
+  }
+
+  .chat-header-actions {
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+  }
+
+  .chat-header-search {
+    width: 100% !important;
+    margin-top: 8px !important;
+  }
+
+  /* Mensagens em mobile */
+  .messages-container {
+    padding: 12px !important;
+  }
+
+  .message-bubble {
+    max-width: 85% !important;
+    font-size: 14px !important;
+  }
+
+  .message-bubble img {
+    max-height: 200px !important;
+  }
+
+  /* Input de mensagem em mobile */
+  .message-input-container {
+    padding: 12px !important;
+    flex-wrap: wrap !important;
+  }
+
+  .message-input-toolbar {
+    width: 100% !important;
+    margin-bottom: 8px !important;
+    justify-content: space-between !important;
+  }
+
+  .message-input-toolbar button {
+    padding: 8px !important;
+    font-size: 12px !important;
+  }
+
+  .message-input-field {
+    font-size: 16px !important; /* Evita zoom no iOS */
+    padding: 12px 16px !important;
+  }
+
+  /* Gravação de áudio em mobile */
+  .audio-recording-controls {
+    flex-direction: column !important;
+    gap: 8px !important;
+    align-items: stretch !important;
+  }
+
+  .audio-recording-timer {
+    width: 100% !important;
+    text-align: center !important;
+  }
+
+  /* Modais em mobile */
+  .modal-container {
+    padding: 16px !important;
+    margin: 0 !important;
+  }
+
+  .modal-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 90vh !important;
+    margin: 0 !important;
+    border-radius: 16px !important;
+  }
+
+  /* Preview de arquivo em mobile */
+  .file-preview img {
+    max-height: 300px !important;
+  }
+
+  /* Câmera em mobile */
+  .camera-preview {
+    width: 100% !important;
+    height: auto !important;
+    aspect-ratio: 4/3 !important;
+  }
+
+  /* Lista de usuários em mobile */
+  .users-list {
+    max-height: 50vh !important;
+  }
+
+  /* Informações da conversa em mobile */
+  .conversation-info {
+    position: fixed !important;
+    right: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    transform: translateX(100%) !important;
+    transition: transform 0.3s ease !important;
+  }
+
+  .conversation-info.active {
+    transform: translateX(0) !important;
+  }
+
+  /* Emoji picker em mobile */
+  .emoji-picker {
+    position: fixed !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    width: 100% !important;
+    height: 60vh !important;
+    border-radius: 16px 16px 0 0 !important;
+  }
+
+  /* Player de áudio em mobile */
+  audio {
+    width: 100% !important;
+    height: 40px !important;
+  }
+
+  /* Tooltips em mobile (desabilitar) */
+  [title]:hover::after {
+    display: none !important;
+  }
+
+  /* Ajustar scrollbars para mobile */
+  ::-webkit-scrollbar {
+    width: 4px !important;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent !important;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 44, 104, 0.3) !important;
+    border-radius: 2px !important;
+  }
+
+  /* Touch targets maiores */
+  button, .clickable {
+    min-height: 44px !important;
+    min-width: 44px !important;
+  }
+
+  /* Espaçamentos menores */
+  .space-y-4 > * + * {
+    margin-top: 12px !important;
+  }
+
+  .space-x-3 > * + * {
+    margin-left: 8px !important;
+  }
+
+  /* Typography ajustada */
+  .text-xl {
+    font-size: 18px !important;
+  }
+
+  .text-lg {
+    font-size: 16px !important;
+  }
+
+  .text-sm {
+    font-size: 13px !important;
+  }
+
+  .text-xs {
+    font-size: 11px !important;
+  }
+
+  /* Menu hambúrguer para mobile */
+  .mobile-menu-toggle {
+    display: block !important;
+    position: fixed !important;
+    top: 16px !important;
+    left: 16px !important;
+    z-index: 100 !important;
+    background: rgba(255, 44, 104, 0.9) !important;
+    backdrop-filter: blur(10px) !important;
+    border: 1px solid rgba(255, 44, 104, 0.3) !important;
+    border-radius: 12px !important;
+    padding: 12px !important;
+    color: white !important;
+  }
+
+  /* Overlay para fechar sidebar */
+  .mobile-overlay {
+    position: fixed !important;
+    inset: 0 !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    z-index: 40 !important;
+    backdrop-filter: blur(4px) !important;
+  }
+
+  /* Safe area para iPhones */
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top) !important;
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom) !important;
+  }
+
+  /* Ajustes para PWA */
+  @media (display-mode: standalone) {
+    .pwa-header {
+      padding-top: calc(env(safe-area-inset-top) + 16px) !important;
+    }
+  }
+}
+
+/* Tablet - ajustes intermediários */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .chat-container {
+    border-radius: 12px !important;
+  }
+
+  .chat-sidebar {
+    min-width: 280px !important;
+  }
+
+  .message-bubble {
+    max-width: 75% !important;
+  }
+
+  .modal-content {
+    max-width: 600px !important;
+  }
+}
+
+/* Desktop - manter comportamento atual */
+@media (min-width: 1025px) {
+  .mobile-menu-toggle {
+    display: none !important;
+  }
+
+  .mobile-overlay {
+    display: none !important;
+  }
+} 
