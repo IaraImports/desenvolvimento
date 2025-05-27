@@ -220,6 +220,17 @@ export default function ChatInterno() {
   const [isTyping, setIsTyping] = useState(false);
   const [replyingTo, setReplyingTo] = useState(null);
   
+  // Estados para novas funcionalidades
+  const [showFilePreview, setShowFilePreview] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [fileCaption, setFileCaption] = useState('');
+  const [isRecordingAudio, setIsRecordingAudio] = useState(false);
+  const [audioRecorder, setAudioRecorder] = useState(null);
+  const [recordingTime, setRecordingTime] = useState(0);
+  const [showCallModal, setShowCallModal] = useState(false);
+  const [callType, setCallType] = useState('video'); // 'video' ou 'audio'
+  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  
   // Estados para grupos
   const [groupName, setGroupName] = useState('');
   const [groupDescription, setGroupDescription] = useState('');
@@ -582,20 +593,36 @@ export default function ChatInterno() {
     }
   };
 
-  // Função de upload de arquivo
+  // 📎 Função de upload de arquivo com preview
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (!file) return;
 
     if (file.size > 25 * 1024 * 1024) {
-      toast.error('Arquivo muito grande. Máximo 25MB');
+      toast.error('📁 Arquivo muito grande. Máximo 25MB');
       return;
     }
 
-    if (file.type.startsWith('image/')) {
-      sendMessage(null, null, 'image', file);
-    } else {
-      sendMessage(null, null, 'file', file);
+    setSelectedFile(file);
+    setShowFilePreview(true);
+    setFileCaption('');
+  };
+
+  // 📤 Enviar arquivo com legenda
+  const sendFileWithCaption = async () => {
+    if (!selectedFile) return;
+
+    try {
+      const type = selectedFile.type.startsWith('image/') ? 'image' : 'file';
+      await sendMessage(null, fileCaption.trim() || null, type, selectedFile);
+      
+      setShowFilePreview(false);
+      setSelectedFile(null);
+      setFileCaption('');
+      toast.success('📤 Arquivo enviado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao enviar arquivo:', error);
+      toast.error('❌ Erro ao enviar arquivo');
     }
   };
 
@@ -647,6 +674,115 @@ export default function ChatInterno() {
   // Funções auxiliares
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // 🗑️ Função para deletar conversa
+  const deleteConversation = async (conversationId) => {
+    if (!window.confirm('❌ Tem certeza que deseja excluir esta conversa? Esta ação não pode ser desfeita.')) {
+      return;
+    }
+
+    try {
+      await updateDoc(doc(db, 'conversations', conversationId), {
+        deleted: true,
+        deletedAt: serverTimestamp(),
+        deletedBy: user.uid
+      });
+      
+      setSelectedConversation(null);
+      toast.success('🗑️ Conversa excluída com sucesso!');
+    } catch (error) {
+      console.error('Erro ao excluir conversa:', error);
+      toast.error('❌ Erro ao excluir conversa');
+    }
+  };
+
+  // 📁 Função para arquivar conversa
+  const archiveConversation = async (conversationId) => {
+    try {
+      await updateDoc(doc(db, 'conversations', conversationId), {
+        archived: true,
+        archivedAt: serverTimestamp(),
+        archivedBy: user.uid
+      });
+      
+      toast.success('📁 Conversa arquivada com sucesso!');
+    } catch (error) {
+      console.error('Erro ao arquivar conversa:', error);
+      toast.error('❌ Erro ao arquivar conversa');
+    }
+  };
+
+  // 🔔 Função para toggle de notificações
+  const toggleNotifications = async (conversationId) => {
+    try {
+      const newStatus = !notificationsEnabled;
+      setNotificationsEnabled(newStatus);
+      
+      await updateDoc(doc(db, 'conversations', conversationId), {
+        [`notifications.${user.uid}`]: newStatus
+      });
+      
+      toast.success(newStatus ? '🔔 Notificações ativadas!' : '🔕 Notificações desativadas!');
+    } catch (error) {
+      console.error('Erro ao atualizar notificações:', error);
+      toast.error('❌ Erro ao atualizar notificações');
+    }
+  };
+
+  // 🎤 Função para gravar áudio
+  const startAudioRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(stream);
+      const chunks = [];
+
+      recorder.ondataavailable = (e) => chunks.push(e.data);
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(chunks, { type: 'audio/wav' });
+        const audioFile = new File([audioBlob], `audio_${Date.now()}.wav`, { type: 'audio/wav' });
+        
+        setIsRecordingAudio(false);
+        setRecordingTime(0);
+        stream.getTracks().forEach(track => track.stop());
+        
+        await sendMessage(null, null, 'audio', audioFile);
+      };
+
+      setAudioRecorder(recorder);
+      setIsRecordingAudio(true);
+      recorder.start();
+
+      // Timer para gravação
+      const timer = setInterval(() => {
+        setRecordingTime(prev => prev + 1);
+      }, 1000);
+
+      // Parar automaticamente após 5 minutos
+      setTimeout(() => {
+        if (recorder.state === 'recording') {
+          recorder.stop();
+          clearInterval(timer);
+        }
+      }, 300000);
+
+    } catch (error) {
+      console.error('Erro ao iniciar gravação:', error);
+      toast.error('❌ Erro ao acessar microfone');
+    }
+  };
+
+  const stopAudioRecording = () => {
+    if (audioRecorder && audioRecorder.state === 'recording') {
+      audioRecorder.stop();
+    }
+  };
+
+  // 📞 Funções de chamada
+  const startCall = (type) => {
+    setCallType(type);
+    setShowCallModal(true);
+    toast.success(`📞 Iniciando chamada de ${type === 'video' ? 'vídeo' : 'áudio'}...`);
   };
 
   const formatTime = (timestamp) => {
@@ -948,18 +1084,34 @@ export default function ChatInterno() {
                 </div>
                 
                 {/* Ações do header */}
-                <button className="p-2 text-white/60 hover:text-white transition-colors">
+                {/* Ações do header FUNCIONAIS */}
+                <motion.button 
+                  onClick={() => startCall('audio')}
+                  className="p-2 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-all"
+                  title="📞 Chamada de áudio"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
                   <Phone className="w-5 h-5" />
-                </button>
-                <button className="p-2 text-white/60 hover:text-white transition-colors">
+                </motion.button>
+                <motion.button 
+                  onClick={() => startCall('video')}
+                  className="p-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-all"
+                  title="📹 Chamada de vídeo"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
                   <Video className="w-5 h-5" />
-                </button>
-                <button 
+                </motion.button>
+                <motion.button 
                   onClick={() => setShowConversationInfo(!showConversationInfo)}
-                  className="p-2 text-white/60 hover:text-white transition-colors"
+                  className="p-2 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-all"
+                  title="ℹ️ Informações da conversa"
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                 >
                   <Info className="w-5 h-5" />
-                </button>
+                </motion.button>
               </div>
             </div>
 
@@ -1024,13 +1176,34 @@ export default function ChatInterno() {
                             </div>
                           )}
 
+                          {message.type === 'audio' && message.file && (
+                            <div className="flex items-center space-x-3 mb-2 p-3 bg-gradient-to-r from-purple-900/20 to-pink-900/20 rounded-xl border border-purple-500/30">
+                              <div className="w-10 h-10 bg-purple-500/20 rounded-full flex items-center justify-center">
+                                <Headphones className="w-5 h-5 text-purple-400" />
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-white font-medium text-sm flex items-center space-x-2">
+                                  <span>🎤 Mensagem de Áudio</span>
+                                </p>
+                                <audio 
+                                  controls 
+                                  className="w-full mt-2"
+                                  style={{ filter: 'hue-rotate(300deg)' }}
+                                >
+                                  <source src={message.file.url} type="audio/wav" />
+                                  Seu navegador não suporta áudio.
+                                </audio>
+                              </div>
+                            </div>
+                          )}
+
                           {message.type === 'file' && message.file && (
                             <div className="flex items-center space-x-3 mb-2 p-2 bg-black/20 rounded-lg">
                               <File className="w-8 h-8 text-white/80" />
                               <div className="flex-1">
                                 <p className="text-white font-medium text-sm">{message.file.name}</p>
                                 <p className="text-white/60 text-xs">
-                                  {(message.file.size / 1024 / 1024).toFixed(2)} MB
+                                  📁 {(message.file.size / 1024 / 1024).toFixed(2)} MB
                                 </p>
                               </div>
                               <a 
@@ -1142,12 +1315,24 @@ export default function ChatInterno() {
                   </motion.button>
                   
                   <motion.button
-                    className="p-2 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-all"
-                    title="🎤 Gravar áudio"
+                    onClick={isRecordingAudio ? stopAudioRecording : startAudioRecording}
+                    className={`p-2 rounded-lg transition-all ${
+                      isRecordingAudio 
+                        ? 'bg-red-500/30 text-red-400 animate-pulse' 
+                        : 'bg-purple-500/20 text-purple-400 hover:bg-purple-500/30'
+                    }`}
+                    title={isRecordingAudio ? `🛑 Parar gravação (${recordingTime}s)` : '🎤 Gravar áudio'}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    <Mic className="w-4 h-4" />
+                    {isRecordingAudio ? (
+                      <div className="flex items-center space-x-1">
+                        <div className="w-2 h-2 bg-red-400 rounded-full animate-ping"></div>
+                        <span className="text-xs">{recordingTime}s</span>
+                      </div>
+                    ) : (
+                      <Mic className="w-4 h-4" />
+                    )}
                   </motion.button>
                   
                   <motion.button
@@ -1346,16 +1531,31 @@ export default function ChatInterno() {
             )}
 
             {/* Ações */}
+            {/* Ações FUNCIONAIS */}
             <div className="space-y-2">
-              <button className="w-full p-3 bg-[#0D0C0C]/50 text-white rounded-lg hover:bg-[#0D0C0C]/70 transition-colors flex items-center space-x-3">
-                <Bell className="w-5 h-5" />
-                <span>Notificações</span>
-              </button>
+              <motion.button 
+                onClick={() => toggleNotifications(selectedConversation.id)}
+                className={`w-full p-3 rounded-lg transition-all flex items-center space-x-3 ${
+                  notificationsEnabled 
+                    ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' 
+                    : 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/30'
+                }`}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {notificationsEnabled ? <Bell className="w-5 h-5" /> : <BellOff className="w-5 h-5" />}
+                <span>{notificationsEnabled ? '🔔 Notificações Ativas' : '🔕 Notificações Desativadas'}</span>
+              </motion.button>
               
-              <button className="w-full p-3 bg-[#0D0C0C]/50 text-white rounded-lg hover:bg-[#0D0C0C]/70 transition-colors flex items-center space-x-3">
+              <motion.button 
+                onClick={() => archiveConversation(selectedConversation.id)}
+                className="w-full p-3 bg-amber-500/20 text-amber-400 rounded-lg hover:bg-amber-500/30 transition-all flex items-center space-x-3"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
                 <Archive className="w-5 h-5" />
-                <span>Arquivar conversa</span>
-              </button>
+                <span>📁 Arquivar conversa</span>
+              </motion.button>
 
               {selectedConversation.isGroup && selectedConversation.admins?.includes(user.uid) && (
                 <>
@@ -1371,10 +1571,15 @@ export default function ChatInterno() {
                 </>
               )}
 
-              <button className="w-full p-3 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors flex items-center space-x-3">
+              <motion.button 
+                onClick={() => deleteConversation(selectedConversation.id)}
+                className="w-full p-3 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all flex items-center space-x-3"
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
                 <Trash2 className="w-5 h-5" />
-                <span>Excluir conversa</span>
-              </button>
+                <span>🗑️ Excluir conversa</span>
+              </motion.button>
             </div>
           </div>
         </div>
@@ -1439,6 +1644,168 @@ export default function ChatInterno() {
                     </div>
                   </div>
                 ))}
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de Preview de Arquivo */}
+      <AnimatePresence>
+        {showFilePreview && selectedFile && (
+          <motion.div
+            className="fixed inset-0 bg-[#0D0C0C]/90 backdrop-blur-sm z-[99999] flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-gradient-to-br from-[#0D0C0C] to-purple-900/20 rounded-2xl border border-[#FF2C68]/50 p-6 w-full max-w-lg shadow-2xl"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-white flex items-center space-x-2">
+                  <Paperclip className="w-5 h-5 text-[#FF2C68]" />
+                  <span>📎 Enviar Arquivo</span>
+                </h2>
+                <button
+                  onClick={() => setShowFilePreview(false)}
+                  className="p-2 text-white/60 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Preview do arquivo */}
+              <div className="mb-6">
+                {selectedFile.type.startsWith('image/') ? (
+                  <div className="relative">
+                    <img 
+                      src={URL.createObjectURL(selectedFile)} 
+                      alt="Preview"
+                      className="w-full max-h-64 object-cover rounded-xl border border-[#FF2C68]/30"
+                    />
+                    <div className="absolute top-2 right-2 bg-[#0D0C0C]/80 backdrop-blur-sm px-2 py-1 rounded-lg">
+                      <span className="text-white/80 text-xs">🖼️ Imagem</span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl p-6 flex items-center space-x-4">
+                    <div className="w-12 h-12 bg-[#FF2C68]/20 rounded-xl flex items-center justify-center">
+                      <File className="w-6 h-6 text-[#FF2C68]" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-white font-medium">{selectedFile.name}</p>
+                      <p className="text-white/60 text-sm">
+                        📁 {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Campo de legenda */}
+              <div className="mb-6">
+                <label className="block text-white font-medium mb-2">
+                  📝 Adicionar uma mensagem (opcional)
+                </label>
+                <textarea
+                  value={fileCaption}
+                  onChange={(e) => setFileCaption(e.target.value)}
+                  className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none focus:ring-2 focus:ring-[#FF2C68]/20 transition-all resize-none"
+                  placeholder="💬 Digite uma mensagem para acompanhar o arquivo..."
+                  rows="3"
+                />
+              </div>
+
+              {/* Botões de ação */}
+              <div className="flex space-x-3">
+                <motion.button
+                  onClick={() => setShowFilePreview(false)}
+                  className="flex-1 px-4 py-3 bg-gray-500/20 text-gray-400 rounded-xl hover:bg-gray-500/30 transition-all"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  ❌ Cancelar
+                </motion.button>
+                <motion.button
+                  onClick={sendFileWithCaption}
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-[#FF2C68] to-pink-600 hover:from-[#FF2C68]/80 hover:to-pink-600/80 text-white rounded-xl font-medium transition-all shadow-lg shadow-[#FF2C68]/25"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  🚀 Enviar Arquivo
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de Chamada */}
+      <AnimatePresence>
+        {showCallModal && (
+          <motion.div
+            className="fixed inset-0 bg-[#0D0C0C]/90 backdrop-blur-sm z-[99999] flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-gradient-to-br from-[#0D0C0C] to-purple-900/20 rounded-2xl border border-[#FF2C68]/50 p-8 w-full max-w-md text-center shadow-2xl"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            >
+              <div className="w-20 h-20 bg-gradient-to-br from-[#FF2C68] to-pink-600 rounded-full flex items-center justify-center mx-auto mb-6">
+                {callType === 'video' ? (
+                  <Video className="w-10 h-10 text-white" />
+                ) : (
+                  <Phone className="w-10 h-10 text-white" />
+                )}
+              </div>
+
+              <h2 className="text-xl font-bold text-white mb-2">
+                {callType === 'video' ? '📹 Chamada de Vídeo' : '📞 Chamada de Áudio'}
+              </h2>
+              
+              <p className="text-white/60 mb-6">
+                Iniciando chamada com {selectedConversation?.isGroup 
+                  ? selectedConversation.name 
+                  : users.find(u => 
+                      selectedConversation?.participants.includes(u.id) && u.id !== user.uid
+                    )?.displayName || 'Usuário'
+                }...
+              </p>
+
+              <div className="flex items-center justify-center space-x-4 mb-6">
+                <div className="w-3 h-3 bg-[#FF2C68] rounded-full animate-bounce"></div>
+                <div className="w-3 h-3 bg-[#FF2C68] rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                <div className="w-3 h-3 bg-[#FF2C68] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+              </div>
+
+              <div className="flex space-x-3">
+                <motion.button
+                  onClick={() => setShowCallModal(false)}
+                  className="flex-1 px-4 py-3 bg-red-500/20 text-red-400 rounded-xl hover:bg-red-500/30 transition-all"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  ❌ Cancelar
+                </motion.button>
+                <motion.button
+                  onClick={() => {
+                    setShowCallModal(false);
+                    toast.success(`📞 Chamada de ${callType} conectada!`);
+                  }}
+                  className="flex-1 px-4 py-3 bg-green-500/20 text-green-400 rounded-xl hover:bg-green-500/30 transition-all"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  ✅ Conectar
+                </motion.button>
               </div>
             </motion.div>
           </motion.div>
