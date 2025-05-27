@@ -230,6 +230,9 @@ export default function ChatInterno() {
   const [showCallModal, setShowCallModal] = useState(false);
   const [callType, setCallType] = useState('video'); // 'video' ou 'audio'
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [showCameraModal, setShowCameraModal] = useState(false);
+  const [cameraStream, setCameraStream] = useState(null);
   
   // Estados para grupos
   const [groupName, setGroupName] = useState('');
@@ -321,7 +324,9 @@ export default function ChatInterno() {
       const conversationsData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      })).sort((a, b) => {
+      }))
+      .filter(conv => !conv.deleted) // Filtrar conversas deletadas
+      .sort((a, b) => {
         // Ordenar pelo timestamp da última mensagem (mais recente primeiro)
         const aTime = a.lastMessageAt?.toDate?.() || new Date(0);
         const bTime = b.lastMessageAt?.toDate?.() || new Date(0);
@@ -613,16 +618,63 @@ export default function ChatInterno() {
     if (!selectedFile) return;
 
     try {
+      setUploadingFile(true);
       const type = selectedFile.type.startsWith('image/') ? 'image' : 'file';
-      await sendMessage(null, fileCaption.trim() || null, type, selectedFile);
       
+      // Upload do arquivo
+      const fileRef = ref(storage, `chat/${selectedConversation.id}/${Date.now()}_${selectedFile.name}`);
+      const snapshot = await uploadBytes(fileRef, selectedFile);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      
+      const fileData = {
+        name: selectedFile.name,
+        url: downloadURL,
+        type: selectedFile.type,
+        size: selectedFile.size
+      };
+
+      const messageData = {
+        conversationId: selectedConversation.id,
+        text: fileCaption.trim() || (type === 'image' ? '🖼️ Imagem' : '📁 Arquivo'),
+        senderId: user.uid,
+        senderName: user.displayName || user.email,
+        senderAvatar: user.photoURL || null,
+        type,
+        file: fileData,
+        createdAt: serverTimestamp(),
+        status: 'sending',
+        edited: false,
+        reactions: {},
+        replyTo: replyingTo,
+        readBy: [user.uid]
+      };
+
+      const docRef = await addDoc(collection(db, 'messages'), messageData);
+
+      // Atualizar status para 'sent'
+      setTimeout(async () => {
+        await updateDoc(doc(db, 'messages', docRef.id), {
+          status: 'sent'
+        });
+      }, 500);
+
+      // Atualizar última mensagem da conversa
+      await updateDoc(doc(db, 'conversations', selectedConversation.id), {
+        lastMessage: fileCaption.trim() || (type === 'image' ? '🖼️ Imagem' : `📁 ${selectedFile.name}`),
+        lastMessageAt: serverTimestamp()
+      });
+
       setShowFilePreview(false);
       setSelectedFile(null);
       setFileCaption('');
+      setReplyingTo(null);
+      setUploadingFile(false);
       toast.success('📤 Arquivo enviado com sucesso!');
+      
     } catch (error) {
       console.error('Erro ao enviar arquivo:', error);
       toast.error('❌ Erro ao enviar arquivo');
+      setUploadingFile(false);
     }
   };
 
@@ -730,26 +782,47 @@ export default function ChatInterno() {
     }
   };
 
-  // 🎤 Função para gravar áudio
+  // 🎤 Função para gravar áudio CORRIGIDA
+  const [audioStream, setAudioStream] = useState(null);
+  const [audioChunks, setAudioChunks] = useState([]);
+  const [recordingTimer, setRecordingTimer] = useState(null);
+
   const startAudioRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const recorder = new MediaRecorder(stream);
       const chunks = [];
 
-      recorder.ondataavailable = (e) => chunks.push(e.data);
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          chunks.push(e.data);
+        }
+      };
+
       recorder.onstop = async () => {
-        const audioBlob = new Blob(chunks, { type: 'audio/wav' });
-        const audioFile = new File([audioBlob], `audio_${Date.now()}.wav`, { type: 'audio/wav' });
+        const audioBlob = new Blob(chunks, { type: 'audio/webm' });
+        
+        // Criar um objeto File-like sem usar constructor File
+        const audioFile = {
+          name: `audio_${Date.now()}.webm`,
+          type: 'audio/webm',
+          size: audioBlob.size,
+          blob: audioBlob
+        };
         
         setIsRecordingAudio(false);
         setRecordingTime(0);
+        setAudioStream(null);
+        setAudioChunks([]);
         stream.getTracks().forEach(track => track.stop());
         
-        await sendMessage(null, null, 'audio', audioFile);
+        // Enviar o áudio
+        await sendAudioMessage(audioFile);
       };
 
       setAudioRecorder(recorder);
+      setAudioStream(stream);
+      setAudioChunks(chunks);
       setIsRecordingAudio(true);
       recorder.start();
 
@@ -757,24 +830,99 @@ export default function ChatInterno() {
       const timer = setInterval(() => {
         setRecordingTime(prev => prev + 1);
       }, 1000);
+      setRecordingTimer(timer);
 
-      // Parar automaticamente após 5 minutos
-      setTimeout(() => {
-        if (recorder.state === 'recording') {
-          recorder.stop();
-          clearInterval(timer);
-        }
-      }, 300000);
+      toast.success('🎤 Gravação iniciada! Clique novamente para parar e enviar.');
 
     } catch (error) {
       console.error('Erro ao iniciar gravação:', error);
-      toast.error('❌ Erro ao acessar microfone');
+      toast.error('❌ Erro ao acessar microfone. Verifique as permissões.');
     }
   };
 
   const stopAudioRecording = () => {
     if (audioRecorder && audioRecorder.state === 'recording') {
       audioRecorder.stop();
+      if (recordingTimer) {
+        clearInterval(recordingTimer);
+        setRecordingTimer(null);
+      }
+      toast.success('🎵 Áudio enviado com sucesso!');
+    }
+  };
+
+  const cancelAudioRecording = () => {
+    if (audioRecorder && audioRecorder.state === 'recording') {
+      audioRecorder.stop();
+    }
+    if (audioStream) {
+      audioStream.getTracks().forEach(track => track.stop());
+    }
+    if (recordingTimer) {
+      clearInterval(recordingTimer);
+      setRecordingTimer(null);
+    }
+    
+    setIsRecordingAudio(false);
+    setRecordingTime(0);
+    setAudioStream(null);
+    setAudioChunks([]);
+    setAudioRecorder(null);
+    toast.info('🚫 Gravação cancelada');
+  };
+
+  // Função para enviar áudio
+  const sendAudioMessage = async (audioFile) => {
+    try {
+      setUploadingFile(true);
+      const fileRef = ref(storage, `chat/${selectedConversation.id}/audio_${Date.now()}.webm`);
+      const snapshot = await uploadBytes(fileRef, audioFile.blob);
+      const downloadURL = await getDownloadURL(snapshot.ref);
+      
+      const fileData = {
+        name: audioFile.name,
+        url: downloadURL,
+        type: audioFile.type,
+        size: audioFile.size
+      };
+
+      const messageData = {
+        conversationId: selectedConversation.id,
+        text: '🎤 Mensagem de áudio',
+        senderId: user.uid,
+        senderName: user.displayName || user.email,
+        senderAvatar: user.photoURL || null,
+        type: 'audio',
+        file: fileData,
+        createdAt: serverTimestamp(),
+        status: 'sending',
+        edited: false,
+        reactions: {},
+        replyTo: replyingTo,
+        readBy: [user.uid]
+      };
+
+      const docRef = await addDoc(collection(db, 'messages'), messageData);
+
+      // Atualizar status para 'sent'
+      setTimeout(async () => {
+        await updateDoc(doc(db, 'messages', docRef.id), {
+          status: 'sent'
+        });
+      }, 500);
+
+      // Atualizar última mensagem da conversa
+      await updateDoc(doc(db, 'conversations', selectedConversation.id), {
+        lastMessage: '🎤 Mensagem de áudio',
+        lastMessageAt: serverTimestamp()
+      });
+
+      setUploadingFile(false);
+      
+    } catch (error) {
+      console.error('Erro ao enviar áudio:', error);
+      toast.error('❌ Erro ao enviar áudio');
+      setUploadingFile(false);
     }
   };
 
@@ -783,6 +931,90 @@ export default function ChatInterno() {
     setCallType(type);
     setShowCallModal(true);
     toast.success(`📞 Iniciando chamada de ${type === 'video' ? 'vídeo' : 'áudio'}...`);
+  };
+
+  // 📍 Função para enviar localização
+  const sendLocation = async () => {
+    if (!navigator.geolocation) {
+      toast.error('❌ Geolocalização não suportada pelo navegador');
+      return;
+    }
+
+    toast.loading('📍 Obtendo localização...');
+    
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+        const locationText = `📍 Localização compartilhada\n🌐 Lat: ${latitude.toFixed(6)}, Long: ${longitude.toFixed(6)}`;
+        const mapsUrl = `https://maps.google.com/maps?q=${latitude},${longitude}`;
+        
+        try {
+          await sendMessage(null, `${locationText}\n🗺️ Ver no mapa: ${mapsUrl}`, 'location');
+          toast.success('📍 Localização enviada!');
+        } catch (error) {
+          toast.error('❌ Erro ao enviar localização');
+        }
+      },
+      (error) => {
+        console.error('Erro ao obter localização:', error);
+        toast.error('❌ Erro ao obter localização. Verifique as permissões.');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
+    );
+  };
+
+  // 📷 Função para abrir câmera
+  const openCamera = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { facingMode: 'user' }, 
+        audio: false 
+      });
+      setCameraStream(stream);
+      setShowCameraModal(true);
+      toast.success('📷 Câmera ativada!');
+    } catch (error) {
+      console.error('Erro ao abrir câmera:', error);
+      toast.error('❌ Erro ao acessar câmera. Verifique as permissões.');
+    }
+  };
+
+  // 📸 Função para tirar foto
+  const takePhoto = () => {
+    if (!cameraStream) return;
+
+    const video = document.getElementById('camera-preview');
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    ctx.drawImage(video, 0, 0);
+
+    canvas.toBlob(async (blob) => {
+      const photoFile = new File([blob], `photo_${Date.now()}.jpg`, { type: 'image/jpeg' });
+      
+      // Fechar câmera
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+      setShowCameraModal(false);
+      
+      // Abrir preview da foto
+      setSelectedFile(photoFile);
+      setShowFilePreview(true);
+      setFileCaption('');
+      
+      toast.success('📸 Foto capturada!');
+    }, 'image/jpeg', 0.9);
+  };
+
+  // ❌ Fechar câmera
+  const closeCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+    setShowCameraModal(false);
   };
 
   const formatTime = (timestamp) => {
@@ -869,14 +1101,15 @@ export default function ChatInterno() {
               >
                 <Users className="w-4 h-4" />
               </motion.button>
-              <motion.button
-                className="p-2 bg-gradient-to-br from-purple-500/20 to-pink-600/20 text-purple-400 rounded-xl hover:from-purple-500/30 hover:to-pink-600/30 transition-all border border-purple-500/30"
-                title="⚙️ Configurações"
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <Settings className="w-4 h-4" />
-              </motion.button>
+                             <motion.button
+                 onClick={() => setShowConfigModal(true)}
+                 className="p-2 bg-gradient-to-br from-purple-500/20 to-pink-600/20 text-purple-400 rounded-xl hover:from-purple-500/30 hover:to-pink-600/30 transition-all border border-purple-500/30"
+                 title="⚙️ Configurações do Chat"
+                 whileHover={{ scale: 1.05 }}
+                 whileTap={{ scale: 0.95 }}
+               >
+                 <Settings className="w-4 h-4" />
+               </motion.button>
             </div>
           </div>
 
@@ -1187,12 +1420,24 @@ export default function ChatInterno() {
                                 </p>
                                 <audio 
                                   controls 
-                                  className="w-full mt-2"
-                                  style={{ filter: 'hue-rotate(300deg)' }}
+                                  className="w-full mt-2 rounded-lg"
+                                  style={{ 
+                                    filter: 'hue-rotate(300deg) contrast(1.2)',
+                                    height: '40px'
+                                  }}
+                                  preload="metadata"
                                 >
+                                  <source src={message.file.url} type="audio/webm" />
                                   <source src={message.file.url} type="audio/wav" />
-                                  Seu navegador não suporta áudio.
+                                  <source src={message.file.url} type="audio/mp3" />
+                                  <p className="text-white/60 text-xs">
+                                    🔊 Seu navegador não suporta reprodução de áudio.
+                                  </p>
                                 </audio>
+                                <div className="text-white/40 text-xs mt-1 flex items-center justify-between">
+                                  <span>💾 {(message.file.size / 1024).toFixed(1)} KB</span>
+                                  <span>🎵 Mensagem de voz</span>
+                                </div>
                               </div>
                             </div>
                           )}
@@ -1306,38 +1551,63 @@ export default function ChatInterno() {
                   </motion.button>
                   
                   <motion.button
+                    onClick={openCamera}
                     className="p-2 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-all"
-                    title="📷 Enviar imagem"
+                    title="📷 Tirar foto"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
                     <Camera className="w-4 h-4" />
                   </motion.button>
                   
-                  <motion.button
-                    onClick={isRecordingAudio ? stopAudioRecording : startAudioRecording}
-                    className={`p-2 rounded-lg transition-all ${
-                      isRecordingAudio 
-                        ? 'bg-red-500/30 text-red-400 animate-pulse' 
-                        : 'bg-purple-500/20 text-purple-400 hover:bg-purple-500/30'
-                    }`}
-                    title={isRecordingAudio ? `🛑 Parar gravação (${recordingTime}s)` : '🎤 Gravar áudio'}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    {isRecordingAudio ? (
-                      <div className="flex items-center space-x-1">
-                        <div className="w-2 h-2 bg-red-400 rounded-full animate-ping"></div>
-                        <span className="text-xs">{recordingTime}s</span>
-                      </div>
-                    ) : (
+                  {/* Botão de áudio com controles avançados */}
+                  {!isRecordingAudio ? (
+                    <motion.button
+                      onClick={startAudioRecording}
+                      className="p-2 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-all"
+                      title="🎤 Gravar mensagem de áudio"
+                      whileHover={{ scale: 1.05 }}
+                      whileTap={{ scale: 0.95 }}
+                    >
                       <Mic className="w-4 h-4" />
-                    )}
-                  </motion.button>
+                    </motion.button>
+                  ) : (
+                    <div className="flex items-center space-x-2">
+                      <motion.button
+                        onClick={stopAudioRecording}
+                        className="p-2 bg-green-500/30 text-green-400 rounded-lg hover:bg-green-500/40 transition-all"
+                        title="✅ Parar e enviar áudio"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <Send className="w-4 h-4" />
+                      </motion.button>
+                      
+                      <div className="bg-red-500/20 px-3 py-2 rounded-lg border border-red-500/30">
+                        <div className="flex items-center space-x-2">
+                          <div className="w-2 h-2 bg-red-400 rounded-full animate-ping"></div>
+                          <span className="text-red-400 text-xs font-medium">
+                            🔴 REC {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <motion.button
+                        onClick={cancelAudioRecording}
+                        className="p-2 bg-red-500/30 text-red-400 rounded-lg hover:bg-red-500/40 transition-all"
+                        title="❌ Cancelar gravação"
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                      >
+                        <X className="w-4 h-4" />
+                      </motion.button>
+                    </div>
+                  )}
                   
                   <motion.button
+                    onClick={sendLocation}
                     className="p-2 bg-amber-500/20 text-amber-400 rounded-lg hover:bg-amber-500/30 transition-all"
-                    title="📍 Localização"
+                    title="📍 Enviar localização"
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
@@ -1805,6 +2075,179 @@ export default function ChatInterno() {
                   whileTap={{ scale: 0.98 }}
                 >
                   ✅ Conectar
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal da Câmera */}
+      <AnimatePresence>
+        {showCameraModal && (
+          <motion.div
+            className="fixed inset-0 bg-[#0D0C0C]/95 backdrop-blur-sm z-[99999] flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-gradient-to-br from-[#0D0C0C] to-purple-900/20 rounded-2xl border border-[#FF2C68]/50 p-6 w-full max-w-lg shadow-2xl"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-white flex items-center space-x-2">
+                  <Camera className="w-5 h-5 text-[#FF2C68]" />
+                  <span>📷 Câmera</span>
+                </h2>
+                <button
+                  onClick={closeCamera}
+                  className="p-2 text-white/60 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Preview da câmera */}
+              <div className="relative mb-6">
+                <video
+                  id="camera-preview"
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full rounded-xl border border-[#FF2C68]/30"
+                  ref={(video) => {
+                    if (video && cameraStream) {
+                      video.srcObject = cameraStream;
+                    }
+                  }}
+                />
+                <div className="absolute top-2 left-2 bg-[#0D0C0C]/80 backdrop-blur-sm px-3 py-1 rounded-lg">
+                  <span className="text-white/80 text-xs">📹 Ao vivo</span>
+                </div>
+              </div>
+
+              {/* Botões de ação */}
+              <div className="flex space-x-3">
+                <motion.button
+                  onClick={closeCamera}
+                  className="flex-1 px-4 py-3 bg-gray-500/20 text-gray-400 rounded-xl hover:bg-gray-500/30 transition-all"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  ❌ Cancelar
+                </motion.button>
+                <motion.button
+                  onClick={takePhoto}
+                  className="flex-1 px-4 py-3 bg-gradient-to-r from-[#FF2C68] to-pink-600 hover:from-[#FF2C68]/80 hover:to-pink-600/80 text-white rounded-xl font-medium transition-all shadow-lg shadow-[#FF2C68]/25"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  📸 Tirar Foto
+                </motion.button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de Configurações */}
+      <AnimatePresence>
+        {showConfigModal && (
+          <motion.div
+            className="fixed inset-0 bg-[#0D0C0C]/90 backdrop-blur-sm z-[99999] flex items-center justify-center p-4"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="bg-gradient-to-br from-[#0D0C0C] to-purple-900/20 rounded-2xl border border-[#FF2C68]/50 p-6 w-full max-w-md shadow-2xl"
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-white flex items-center space-x-2">
+                  <Settings className="w-5 h-5 text-[#FF2C68]" />
+                  <span>⚙️ Configurações</span>
+                </h2>
+                <button
+                  onClick={() => setShowConfigModal(false)}
+                  className="p-2 text-white/60 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                {/* Configurações de notificação */}
+                <div className="p-4 bg-[#0D0C0C]/30 rounded-xl border border-[#FF2C68]/20">
+                  <h3 className="text-white font-medium mb-3 flex items-center space-x-2">
+                    <Bell className="w-4 h-4 text-[#FF2C68]" />
+                    <span>🔔 Notificações</span>
+                  </h3>
+                  <div className="space-y-3">
+                    <label className="flex items-center justify-between">
+                      <span className="text-white/80 text-sm">Sons de notificação</span>
+                      <input type="checkbox" defaultChecked className="rounded" />
+                    </label>
+                    <label className="flex items-center justify-between">
+                      <span className="text-white/80 text-sm">Notificações desktop</span>
+                      <input type="checkbox" defaultChecked className="rounded" />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Configurações de privacidade */}
+                <div className="p-4 bg-[#0D0C0C]/30 rounded-xl border border-[#FF2C68]/20">
+                  <h3 className="text-white font-medium mb-3 flex items-center space-x-2">
+                    <Shield className="w-4 h-4 text-[#FF2C68]" />
+                    <span>🔒 Privacidade</span>
+                  </h3>
+                  <div className="space-y-3">
+                    <label className="flex items-center justify-between">
+                      <span className="text-white/80 text-sm">Mostrar "visto por último"</span>
+                      <input type="checkbox" defaultChecked className="rounded" />
+                    </label>
+                    <label className="flex items-center justify-between">
+                      <span className="text-white/80 text-sm">Confirmação de leitura</span>
+                      <input type="checkbox" defaultChecked className="rounded" />
+                    </label>
+                  </div>
+                </div>
+
+                {/* Configurações de tema */}
+                <div className="p-4 bg-[#0D0C0C]/30 rounded-xl border border-[#FF2C68]/20">
+                  <h3 className="text-white font-medium mb-3 flex items-center space-x-2">
+                    <Palette className="w-4 h-4 text-[#FF2C68]" />
+                    <span>🎨 Aparência</span>
+                  </h3>
+                  <div className="space-y-3">
+                    <label className="flex items-center justify-between">
+                      <span className="text-white/80 text-sm">Modo escuro</span>
+                      <input type="checkbox" defaultChecked className="rounded" />
+                    </label>
+                    <label className="flex items-center justify-between">
+                      <span className="text-white/80 text-sm">Animações</span>
+                      <input type="checkbox" defaultChecked className="rounded" />
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6">
+                <motion.button
+                  onClick={() => {
+                    setShowConfigModal(false);
+                    toast.success('⚙️ Configurações salvas!');
+                  }}
+                  className="w-full px-4 py-3 bg-gradient-to-r from-[#FF2C68] to-pink-600 hover:from-[#FF2C68]/80 hover:to-pink-600/80 text-white rounded-xl font-medium transition-all shadow-lg shadow-[#FF2C68]/25"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  💾 Salvar Configurações
                 </motion.button>
               </div>
             </motion.div>
