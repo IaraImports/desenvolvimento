@@ -189,12 +189,15 @@ export default function PDV() {
       return;
     }
 
+    // Garante que a quantidade seja um número inteiro positivo
+    const quantidadeSegura = Math.max(1, Math.floor(novaQuantidade));
+
     const itemCarrinho = carrinho.find(item => item.id === id);
     
     // Para produtos, verificar estoque
     if (itemCarrinho?.tipo === 'produto') {
       const produto = produtos.find(p => p.id === id);
-      if (produto && novaQuantidade > produto.estoque) {
+      if (produto && quantidadeSegura > produto.estoque) {
         toast.error('Estoque insuficiente');
         return;
       }
@@ -202,7 +205,7 @@ export default function PDV() {
 
     setCarrinho(carrinho.map(item =>
       item.id === id
-        ? { ...item, quantidade: novaQuantidade }
+        ? { ...item, quantidade: quantidadeSegura }
         : item
     ));
   };
@@ -740,9 +743,16 @@ export default function PDV() {
                     >
                       <Minus className="w-3 h-3" />
                     </button>
-                    <div className="flex-1 text-center">
-                      <span className="text-white font-bold text-lg">{item.quantidade}</span>
-                      <p className="text-white/60 text-xs">
+                    <div className="flex-1">
+                      <input
+                        type="number"
+                        min="1"
+                        value={item.quantidade}
+                        onChange={(e) => alterarQuantidade(item.id, parseInt(e.target.value) || 1)}
+                        onFocus={(e) => e.target.select()}
+                        className="w-full px-2 py-1 bg-[#0D0C0C]/50 border border-white/20 rounded-lg text-white text-lg font-bold text-center focus:border-[#FF2C68] focus:outline-none"
+                      />
+                      <p className="text-white/60 text-xs text-center mt-1">
                         {item.quantidade === 1 ? 'unidade' : 'unidades'}
                       </p>
                     </div>

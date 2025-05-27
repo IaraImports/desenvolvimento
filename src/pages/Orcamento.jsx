@@ -251,16 +251,20 @@ export default function Orcamento() {
   };
 
   const alterarQuantidade = (itemId, tipo, novaQuantidade) => {
+    // Se a quantidade for 0 ou menor, remove o item
     if (novaQuantidade <= 0) {
       removerItem(itemId, tipo);
       return;
     }
     
+    // Garante que a quantidade seja um número inteiro positivo
+    const quantidadeSegura = Math.max(1, Math.floor(novaQuantidade));
+    
     setOrcamento(prev => ({
       ...prev,
       itens: prev.itens.map(item => 
         item.id === itemId && item.tipo === tipo
-          ? { ...item, quantidade: novaQuantidade, valorTotal: item.valorUnitario * novaQuantidade }
+          ? { ...item, quantidade: quantidadeSegura, valorTotal: item.valorUnitario * quantidadeSegura }
           : item
       )
     }));
@@ -1396,7 +1400,14 @@ export default function Orcamento() {
                       >
                         <Minus className="w-3 h-3" />
                       </button>
-                      <span className="text-white font-medium w-8 text-center">{item.quantidade}</span>
+                      <input
+                        type="number"
+                        min="1"
+                        value={item.quantidade}
+                        onChange={(e) => alterarQuantidade(item.id, item.tipo, parseInt(e.target.value) || 1)}
+                        onFocus={(e) => e.target.select()}
+                        className="w-16 px-2 py-1 bg-[#0D0C0C]/50 border border-white/20 rounded text-white text-sm text-center focus:border-[#FF2C68] focus:outline-none"
+                      />
                       <button
                         onClick={() => alterarQuantidade(item.id, item.tipo, item.quantidade + 1)}
                         className="p-1 bg-green-500/20 text-green-400 rounded hover:bg-green-500/30 transition-colors"

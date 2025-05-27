@@ -5,6 +5,7 @@
     
     <!-- 📱 PWA Meta Tags -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="screen-orientation" content="landscape-primary" />
     <meta name="description" content="Sistema completo de gestão empresarial IARA HUB com chat interno, vendas, estoque e relatórios" />
     <meta name="keywords" content="gestão, vendas, estoque, chat, relatórios, empresa, sistema, IARA HUB" />
     <meta name="author" content="IARA HUB" />
@@ -128,6 +129,28 @@
         window.addEventListener('appinstalled', () => {
           console.log('🎉 PWA foi instalado com sucesso!');
           deferredPrompt = null;
+          
+          // Tentar forçar orientação paisagem
+          if (screen.orientation && screen.orientation.lock) {
+            screen.orientation.lock('landscape-primary').catch((err) => {
+              console.log('⚠️ Não foi possível bloquear orientação:', err);
+            });
+          }
+        });
+
+        // 🔄 Forçar orientação paisagem quando app carrega
+        window.addEventListener('load', () => {
+          // Verificar se é uma PWA instalada
+          if (window.matchMedia('(display-mode: standalone)').matches) {
+            console.log('📱 App rodando como PWA');
+            
+            // Tentar bloquear orientação em paisagem
+            if (screen.orientation && screen.orientation.lock) {
+              screen.orientation.lock('landscape-primary').catch((err) => {
+                console.log('⚠️ Orientação não pode ser bloqueada:', err);
+              });
+            }
+          }
         });
       }
 
