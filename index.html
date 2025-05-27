@@ -5,9 +5,6 @@
     
     <!-- 📱 PWA Meta Tags -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover" />
-    <meta name="screen-orientation" content="landscape-primary" />
-    <meta name="orientation" content="landscape-primary" />
-    <meta name="x5-orientation" content="landscape" />
     <meta name="description" content="Sistema completo de gestão empresarial IARA HUB com chat interno, vendas, estoque e relatórios" />
     <meta name="keywords" content="gestão, vendas, estoque, chat, relatórios, empresa, sistema, IARA HUB" />
     <meta name="author" content="IARA HUB" />
@@ -23,7 +20,6 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="IARA HUB" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <meta name="apple-mobile-web-app-orientation" content="landscape" />
     <meta name="application-name" content="IARA HUB" />
     
     <!-- 📱 iOS Specific Icons -->
@@ -112,87 +108,6 @@
         window.addEventListener('appinstalled', () => {
           console.log('🎉 PWA foi instalado com sucesso!');
           window.deferredPrompt = null;
-          
-          // Tentar forçar orientação paisagem
-          if (screen.orientation && screen.orientation.lock) {
-            screen.orientation.lock('landscape-primary').catch((err) => {
-              console.log('⚠️ Não foi possível bloquear orientação:', err);
-            });
-          }
-        });
-
-        // 🔄 Forçar orientação paisagem SEMPRE
-        function forceKandscapeOrientation() {
-          // Método 1: API Screen Orientation (mais recente)
-          if (screen.orientation && screen.orientation.lock) {
-            screen.orientation.lock('landscape-primary').then(() => {
-              console.log('✅ Orientação forçada via Screen Orientation API');
-            }).catch((err) => {
-              console.log('⚠️ Screen Orientation API falhou:', err);
-              tryAlternativeMethods();
-            });
-          } else {
-            tryAlternativeMethods();
-          }
-        }
-
-        function tryAlternativeMethods() {
-          // Método 2: Webkit Lock Orientation (Safari/iOS)
-          if (screen.lockOrientation) {
-            if (screen.lockOrientation('landscape-primary') || screen.lockOrientation('landscape')) {
-              console.log('✅ Orientação forçada via lockOrientation');
-              return;
-            }
-          }
-
-          // Método 3: Mozilla Lock Orientation
-          if (screen.mozLockOrientation) {
-            if (screen.mozLockOrientation('landscape-primary') || screen.mozLockOrientation('landscape')) {
-              console.log('✅ Orientação forçada via mozLockOrientation');
-              return;
-            }
-          }
-
-          // Método 4: MS Lock Orientation
-          if (screen.msLockOrientation) {
-            if (screen.msLockOrientation('landscape-primary') || screen.msLockOrientation('landscape')) {
-              console.log('✅ Orientação forçada via msLockOrientation');
-              return;
-            }
-          }
-
-          console.log('ℹ️ APIs de orientação não disponíveis - usando CSS transform');
-        }
-
-        // Forçar paisagem quando carrega
-        window.addEventListener('load', () => {
-          console.log('🔄 Forçando orientação paisagem...');
-          forceKandscapeOrientation();
-          
-          // Verificar mudanças de orientação e reforçar
-          if (screen.orientation) {
-            screen.orientation.addEventListener('change', () => {
-              console.log('🔄 Orientação mudou, reforçando paisagem...');
-              setTimeout(forceKandscapeOrientation, 100);
-            });
-          }
-        });
-
-        // Detectar PWA e forçar ainda mais
-        window.addEventListener('load', () => {
-          const isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-          if (isPWA) {
-            console.log('📱 App rodando como PWA - forçando paisagem');
-            forceKandscapeOrientation();
-            
-            // Reforçar a cada 5 segundos se necessário
-            setInterval(() => {
-              if (window.innerHeight > window.innerWidth) {
-                console.log('🔄 Detectado portrait, reforçando paisagem');
-                forceKandscapeOrientation();
-              }
-            }, 5000);
-          }
         });
       }
 

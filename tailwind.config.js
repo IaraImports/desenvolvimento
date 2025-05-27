@@ -1,5 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-module.exports = {
+export default {
   content: [
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
@@ -7,30 +7,29 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Esquema de cores principal: Cores exatas das logos IARA
         primary: {
-          50: '#fef1f4',
-          100: '#fee2e9',
-          200: '#fdc6d4',
-          300: '#fb9fb2',
-          400: '#f76d8a',
-          500: '#FF2C68', // Rosa principal da logo
-          600: '#e51e5f',
-          700: '#c21653',
-          800: '#a0144c',
-          900: '#851447',
+          50: '#fef2f6',
+          100: '#fde7ed',
+          200: '#fbcfdc',
+          300: '#f8a8c0',
+          400: '#f374a2',
+          500: '#FF2C68',
+          600: '#e91a5e',
+          700: '#c50f4d',
+          800: '#a31043',
+          900: '#88133c',
         },
         dark: {
-          50: '#f6f6f6',
-          100: '#e7e7e7',
-          200: '#d1d1d1',
-          300: '#b0b0b0',
-          400: '#888888',
-          500: '#6d6d6d',
-          600: '#5d5d5d',
-          700: '#4f4f4f',
-          800: '#454545',
-          900: '#0D0C0C', // Preto principal da logo
+          50: '#fafafa',
+          100: '#f4f4f5',
+          200: '#e4e4e7',
+          300: '#d4d4d8',
+          400: '#a1a1aa',
+          500: '#71717a',
+          600: '#52525b',
+          700: '#3f3f46',
+          800: '#27272a',
+          900: '#0D0C0C',
         },
         accent: {
           pink: '#FF2C68',
@@ -39,13 +38,13 @@ module.exports = {
         }
       },
       backgroundImage: {
-        'gradient-luxury': 'linear-gradient(135deg, #0D0C0C 0%, #1a1a1a 50%, #FF2C68 100%)',
-        'gradient-pink': 'linear-gradient(135deg, #FF2C68 0%, #e51e5f 100%)',
-        'gradient-dark': 'linear-gradient(135deg, #0D0C0C 0%, #1a1a1a 100%)',
+        'gradient-luxury': 'linear-gradient(135deg, #0D0C0C 0%, #1a1a1a 50%, #0D0C0C 100%)',
+        'gradient-pink': 'linear-gradient(135deg, #FF2C68 0%, #FF6B9D 100%)',
+        'gradient-dark': 'linear-gradient(135deg, #27272a 0%, #18181b 50%, #0f0f10 100%)',
         'gradient-glass': 'linear-gradient(135deg, rgba(255, 44, 104, 0.1) 0%, rgba(13, 12, 12, 0.1) 100%)',
       },
       backdropBlur: {
-        'glass': '20px',
+        'glass': '16px',
       },
       animation: {
         'fade-in': 'fadeIn 0.6s ease-out',
@@ -103,11 +102,13 @@ module.exports = {
       },
       boxShadow: {
         'luxury': '0 25px 50px -12px rgba(255, 44, 104, 0.25)',
-        'dark': '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-        'glass': '0 8px 32px 0 rgba(255, 44, 104, 0.1)',
-        'glow': '0 0 20px rgba(255, 44, 104, 0.4)',
+        'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+        'glow': '0 0 20px rgba(255, 44, 104, 0.5)',
         'inner-glow': 'inset 0 2px 4px 0 rgba(255, 44, 104, 0.1)',
       },
+      fontFamily: {
+        'sans': ['Inter', 'ui-sans-serif', 'system-ui'],
+      }
     },
   },
   plugins: [

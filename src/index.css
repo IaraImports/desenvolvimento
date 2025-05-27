@@ -2,6 +2,8 @@
 @tailwind components;
 @tailwind utilities;
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+
 @layer base {
   * {
     @apply scroll-smooth;
@@ -12,64 +14,8 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 
-  /* Forçar layout paisagem SEMPRE - Rotação CSS forçada */
-  @media screen and (max-width: 768px) and (orientation: portrait) {
-    html {
-      height: 100vw;
-      width: 100vh;
-      overflow: hidden;
-    }
-    
-    body {
-      transform: rotate(90deg);
-      transform-origin: left top;
-      width: 100vh;
-      height: 100vw;
-      position: fixed;
-      top: 100vw;
-      left: 0;
-      overflow: hidden;
-      margin: 0;
-      padding: 0;
-    }
-    
-    #root {
-      width: 100%;
-      height: 100%;
-      overflow: auto;
-    }
-  }
-
-  /* Modo PWA standalone - forçar sempre paisagem */
-  @media (display-mode: standalone) and (orientation: portrait) and (max-width: 768px) {
-    html {
-      height: 100vw;
-      width: 100vh;
-      overflow: hidden;
-    }
-    
-    body {
-      transform: rotate(90deg);
-      transform-origin: left top;
-      width: 100vh;
-      height: 100vw;
-      position: fixed;
-      top: 100vw;
-      left: 0;
-      overflow: hidden;
-      margin: 0;
-      padding: 0;
-    }
-    
-    #root {
-      width: 100%;
-      height: 100%;
-      overflow: auto;
-    }
-  }
-
-  /* Garantir que elementos responsivos funcionem bem na rotação forçada */
-  @media screen and (max-width: 768px) and (orientation: portrait) {
+  /* Layout responsivo mobile sem rotação forçada */
+  @media screen and (max-width: 768px) {
     .responsive-grid {
       grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
     }
@@ -80,8 +26,8 @@
     
     /* Ajustar modais e popups */
     .modal-content {
-      max-width: 90vh !important;
-      max-height: 80vw !important;
+      max-width: 90vw !important;
+      max-height: 80vh !important;
     }
   }
 
@@ -141,7 +87,7 @@
 @layer components {
   /* Botões luxuosos */
   .btn-primary {
-    @apply relative overflow-hidden bg-gradient-pink text-white px-6 py-3 rounded-xl font-semibold 
+    @apply relative overflow-hidden bg-gradient-pink text-white px-8 py-4 rounded-xl font-semibold 
            transition-all duration-300 transform hover:scale-105 hover:shadow-luxury
            before:absolute before:inset-0 before:bg-white before:opacity-0 before:transition-opacity
            hover:before:opacity-10 focus:outline-none focus:ring-4 focus:ring-primary-500/50;
@@ -149,14 +95,14 @@
   
   .btn-secondary {
     @apply relative overflow-hidden bg-dark-800/50 backdrop-blur-glass border border-dark-700 
-           text-white px-6 py-3 rounded-xl font-semibold transition-all duration-300 
+           text-white px-8 py-4 rounded-xl font-semibold transition-all duration-300 
            transform hover:scale-105 hover:bg-dark-700/50 hover:border-primary-500/50
            focus:outline-none focus:ring-4 focus:ring-dark-500/50;
   }
 
   .btn-ghost {
     @apply relative overflow-hidden bg-transparent border border-primary-500/30 
-           text-primary-400 px-6 py-3 rounded-xl font-semibold transition-all duration-300 
+           text-primary-400 px-8 py-4 rounded-xl font-semibold transition-all duration-300 
            transform hover:scale-105 hover:bg-primary-500/10 hover:border-primary-400
            focus:outline-none focus:ring-4 focus:ring-primary-500/30;
   }
@@ -164,19 +110,19 @@
   /* Cards de vidro luxuosas */
   .card {
     @apply relative bg-dark-800/30 backdrop-blur-glass border border-dark-700/50 
-           rounded-2xl p-6 shadow-glass transition-all duration-300
+           rounded-2xl p-8 shadow-glass transition-all duration-300
            hover:bg-dark-800/40 hover:border-dark-600/50 hover:shadow-luxury;
   }
 
   .card-glass {
     @apply relative bg-white/5 backdrop-blur-glass border border-white/10 
-           rounded-2xl p-6 shadow-glass transition-all duration-300
+           rounded-2xl p-8 shadow-glass transition-all duration-300
            hover:bg-white/10 hover:border-white/20;
   }
 
   .card-luxury {
     @apply relative bg-gradient-dark border border-primary-500/20 
-           rounded-2xl p-6 shadow-luxury transition-all duration-300
+           rounded-2xl p-8 shadow-luxury transition-all duration-300
            hover:border-primary-500/40 hover:shadow-glow;
   }
   
@@ -220,7 +166,7 @@
   }
 
   .hover-lift {
-    @apply transition-transform duration-300 hover:scale-105 hover:-translate-y-1;
+    @apply transition-transform duration-300 hover:scale-105 hover:-translate-y-2;
   }
 
   .shimmer {
@@ -283,5 +229,67 @@
   .modal-content {
     @apply relative bg-dark-800/95 backdrop-blur-glass border border-dark-700 
            rounded-2xl shadow-luxury;
+  }
+
+  /* Seções principais */
+  .section {
+    @apply py-20 px-4 relative overflow-hidden;
+  }
+
+  .section-dark {
+    @apply bg-dark-900/95 backdrop-blur-sm;
+  }
+
+  .section-gradient {
+    @apply bg-gradient-luxury;
+  }
+  
+  /* Títulos elegantes */
+  .title-main {
+    @apply text-5xl md:text-7xl font-bold text-gradient mb-6;
+  }
+
+  .title-section {
+    @apply text-4xl md:text-5xl font-bold text-white mb-4;
+  }
+
+  .title-subsection {
+    @apply text-2xl md:text-3xl font-semibold text-white mb-3;
+  }
+
+  /* Animações personalizadas */
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
+  }
+
+  @keyframes float {
+    0%, 100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-20px);
+    }
+  }
+
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(255, 44, 104, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 40px rgba(255, 44, 104, 0.6);
+    }
+  }
+
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .animate-pulse-glow {
+    animation: pulse-glow 2s ease-in-out infinite;
   }
 }
