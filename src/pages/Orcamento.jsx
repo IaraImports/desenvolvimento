@@ -1022,7 +1022,7 @@ export default function Orcamento() {
       </div>
     </div>
   );
-
+  
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -1038,7 +1038,7 @@ export default function Orcamento() {
             <div className="flex items-center space-x-3 mb-2">
               <div className="w-12 h-12 bg-gradient-to-br from-[#FF2C68] to-pink-600 rounded-xl flex items-center justify-center">
                 <FileText className="w-6 h-6 text-white" />
-              </div>
+          </div>
               <div>
                 <div className="flex items-center space-x-3 mb-2">
                   <h1 className="text-3xl font-bold text-white">
@@ -1065,9 +1065,9 @@ export default function Orcamento() {
                 </div>
               </div>
             </div>
-          </div>
         </div>
-        
+      </div>
+
         <div className="flex items-center space-x-3">
           <button
             onClick={() => setShowPreview(true)}
@@ -1285,9 +1285,9 @@ export default function Orcamento() {
                             {produto.cor && (
                               <p className="text-white/40 text-xs">🎨 {produto.cor}</p>
                             )}
-                          </div>
-                        </div>
-                      </div>
+            </div>
+            </div>
+            </div>
                       
                       <button
                         onClick={() => adicionarItem(produto)}
@@ -1295,7 +1295,7 @@ export default function Orcamento() {
                       >
                         <Plus className="w-4 h-4" />
                       </button>
-                    </div>
+          </div>
                   ))
                 ) : (
                   <div className="text-center py-8">
@@ -1336,19 +1336,19 @@ export default function Orcamento() {
                         )}
                       </div>
                       
-                      <button
+          <button
                         onClick={() => adicionarItem(servico)}
                         className="p-2 bg-[#FF2C68]/20 border border-[#FF2C68]/30 rounded-lg text-[#FF2C68] hover:bg-[#FF2C68]/30 transition-colors"
-                      >
+          >
                         <Plus className="w-4 h-4" />
-                      </button>
-                    </div>
+          </button>
+        </div>
                   ))
                 ) : (
                   <div className="text-center py-8">
                     <Wrench className="w-12 h-12 text-white/30 mx-auto mb-4" />
                     <p className="text-white/60">Nenhum serviço encontrado</p>
-                  </div>
+      </div>
                 )
               )}
             </div>

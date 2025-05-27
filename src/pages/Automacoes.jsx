@@ -292,13 +292,13 @@ export default function Automacoes() {
 
   const deleteAutomacao = async (id) => {
     if (window.confirm('Tem certeza que deseja excluir esta automação?')) {
-      try {
-        await deleteDoc(doc(db, 'automacoes', id));
-        toast.success('Automação excluída com sucesso!');
+    try {
+      await deleteDoc(doc(db, 'automacoes', id));
+      toast.success('Automação excluída com sucesso!');
         loadAutomacoes(); // Recarregar lista
-      } catch (error) {
-        console.error('Erro ao excluir automação:', error);
-        toast.error('Erro ao excluir automação');
+    } catch (error) {
+      console.error('Erro ao excluir automação:', error);
+      toast.error('Erro ao excluir automação');
       }
     }
   };
@@ -394,7 +394,7 @@ export default function Automacoes() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6 hover:border-white/20 transition-all">
           <div className="flex items-center justify-between">
-            <div>
+        <div>
               <p className="text-gray-400 text-sm font-medium">Total Automações</p>
               <p className="text-3xl font-bold text-white">{stats.totalAutomacoes}</p>
             </div>
@@ -403,7 +403,7 @@ export default function Automacoes() {
             </div>
           </div>
         </div>
-
+        
         <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6 hover:border-green-500/30 transition-all">
           <div className="flex items-center justify-between">
             <div>
@@ -421,12 +421,12 @@ export default function Automacoes() {
             <div>
               <p className="text-gray-400 text-sm font-medium">Execuções</p>
               <p className="text-3xl font-bold text-blue-400">{stats.executadas}</p>
-            </div>
+                  </div>
             <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">
               <Activity className="w-6 h-6 text-blue-400" />
-            </div>
+                </div>
           </div>
-        </div>
+          </div>
 
         <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6 hover:border-[#FF2C68]/30 transition-all">
           <div className="flex items-center justify-between">
@@ -475,26 +475,26 @@ export default function Automacoes() {
             >
               <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
             </button>
-          </div>
-        </div>
-      </div>
+                    </div>
+                    </div>
+                  </div>
 
       {/* Lista de Automações */}
       <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden">
         <div className="p-6 border-b border-white/10">
           <h2 className="text-2xl font-bold text-white">🔧 Suas Automações</h2>
           <p className="text-gray-400 mt-1">{filteredAutomacoes.length} automações encontradas</p>
-        </div>
+            </div>
         
         <div className="p-6">
           <div className="grid gap-6">
             {filteredAutomacoes.map((automacao) => {
-              const tipoInfo = tiposAutomacao.find(t => t.id === automacao.tipo);
+                const tipoInfo = tiposAutomacao.find(t => t.id === automacao.tipo);
               const IconComponent = tipoInfo?.icon || Bot;
-              
-              return (
+                
+                return (
                 <div
-                  key={automacao.id}
+                    key={automacao.id}
                   className={`group bg-black/30 rounded-2xl p-6 border transition-all duration-200 hover:scale-[1.02] ${
                     automacao.ativo 
                       ? 'border-green-500/30 hover:border-green-500/50' 
@@ -579,11 +579,11 @@ export default function Automacoes() {
                             <p className="text-white font-bold">{automacao.economia || 25}%</p>
                           </div>
                         </div>
+                        </div>
                       </div>
-                    </div>
-                    
-                    <div className="flex items-center space-x-2">
-                      <button
+                      
+                      <div className="flex items-center space-x-2">
+                        <button
                         onClick={() => executarTeste(automacao)}
                         className="p-3 bg-blue-500/20 text-blue-400 rounded-xl hover:bg-blue-500/30 transition-colors"
                         title="Executar Teste"
@@ -594,40 +594,40 @@ export default function Automacoes() {
                       <button
                         onClick={() => toggleAutomacao(automacao.id)}
                         className={`p-3 rounded-xl transition-colors ${
-                          automacao.ativo 
-                            ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' 
-                            : 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/30'
-                        }`}
+                            automacao.ativo 
+                              ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' 
+                              : 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/30'
+                          }`}
                         title={automacao.ativo ? 'Desativar' : 'Ativar'}
                       >
                         {automacao.ativo ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
-                      </button>
-                      
-                      <button
-                        onClick={() => {
-                          setEditingAutomacao(automacao);
-                          setFormData(automacao);
-                          setShowCreateModal(true);
-                        }}
+                        </button>
+                        
+                        <button
+                          onClick={() => {
+                            setEditingAutomacao(automacao);
+                            setFormData(automacao);
+                            setShowCreateModal(true);
+                          }}
                         className="p-3 bg-[#FF2C68]/20 text-[#FF2C68] rounded-xl hover:bg-[#FF2C68]/30 transition-colors"
                         title="Editar"
-                      >
+                        >
                         <Edit className="w-5 h-5" />
-                      </button>
-                      
-                      <button
-                        onClick={() => deleteAutomacao(automacao.id)}
+                        </button>
+                        
+                        <button
+                          onClick={() => deleteAutomacao(automacao.id)}
                         className="p-3 bg-red-500/20 text-red-400 rounded-xl hover:bg-red-500/30 transition-colors"
                         title="Excluir"
-                      >
+                        >
                         <Trash2 className="w-5 h-5" />
-                      </button>
+                        </button>
                     </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                      </div>
+                    </div>
+                );
+              })}
+            </div>
           
           {filteredAutomacoes.length === 0 && (
             <div className="text-center py-16">
@@ -646,9 +646,9 @@ export default function Automacoes() {
               </button>
             </div>
           )}
-        </div>
-      </div>
-
+                  </div>
+                </div>
+                
       {/* Modal de Criação/Edição */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -658,7 +658,7 @@ export default function Automacoes() {
                 <div className="flex items-center space-x-4">
                   <div className="w-12 h-12 bg-gradient-to-br from-[#FF2C68] to-pink-600 rounded-2xl flex items-center justify-center">
                     <Bot className="w-6 h-6 text-white" />
-                  </div>
+                        </div>
                   <div>
                     <h2 className="text-2xl font-bold text-white">
                       {editingAutomacao ? 'Editar Automação' : 'Nova Automação'}
@@ -684,30 +684,30 @@ export default function Automacoes() {
                   <h3 className="text-xl font-bold text-white mb-6">📋 Informações Básicas</h3>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-white font-medium mb-2">Nome da Automação</label>
-                      <input
-                        type="text"
-                        value={formData.nome}
+                <div>
+                  <label className="block text-white font-medium mb-2">Nome da Automação</label>
+                  <input
+                    type="text"
+                    value={formData.nome}
                         onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
                         className="w-full px-4 py-3 bg-black/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:border-[#FF2C68] focus:ring-1 focus:ring-[#FF2C68]/30 focus:outline-none"
-                        placeholder="Ex: Alerta de Estoque Baixo"
-                        required
-                      />
-                    </div>
-                    
-                    <div>
-                      <label className="block text-white font-medium mb-2">Tipo de Automação</label>
-                      <select
-                        value={formData.tipo}
+                    placeholder="Ex: Alerta de Estoque Baixo"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-white font-medium mb-2">Tipo de Automação</label>
+                  <select
+                    value={formData.tipo}
                         onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
                         className="w-full px-4 py-3 bg-black/50 border border-gray-600 rounded-xl text-white focus:border-[#FF2C68] focus:ring-1 focus:ring-[#FF2C68]/30 focus:outline-none"
-                      >
-                        {tiposAutomacao.map(tipo => (
-                          <option key={tipo.id} value={tipo.id}>{tipo.nome}</option>
-                        ))}
-                      </select>
-                    </div>
+                  >
+                    {tiposAutomacao.map(tipo => (
+                      <option key={tipo.id} value={tipo.id}>{tipo.nome}</option>
+                    ))}
+                  </select>
+                </div>
                   </div>
                   
                   <div className="mt-6">
@@ -727,20 +727,20 @@ export default function Automacoes() {
                   <h3 className="text-xl font-bold text-white mb-6">⚙️ Configurações</h3>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-white font-medium mb-2">Frequência</label>
-                      <select
-                        value={formData.frequencia}
+                <div>
+                  <label className="block text-white font-medium mb-2">Frequência</label>
+                  <select
+                    value={formData.frequencia}
                         onChange={(e) => setFormData({ ...formData, frequencia: e.target.value })}
                         className="w-full px-4 py-3 bg-black/50 border border-gray-600 rounded-xl text-white focus:border-[#FF2C68] focus:ring-1 focus:ring-[#FF2C68]/30 focus:outline-none"
-                      >
-                        {frequencias.map(freq => (
-                          <option key={freq.value} value={freq.value}>{freq.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    
-                    <div>
+                  >
+                    {frequencias.map(freq => (
+                      <option key={freq.value} value={freq.value}>{freq.label}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
                       <label className="block text-white font-medium mb-2">Prioridade</label>
                       <select
                         value={formData.prioridade}
@@ -805,7 +805,7 @@ export default function Automacoes() {
             </div>
           </div>
         </div>
-      )}
+        )}
     </div>
   );
 } 
