@@ -12,29 +12,76 @@
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   }
 
-  /* Forçar orientação paisagem quando PWA for instalada */
+  /* Forçar layout paisagem SEMPRE - Rotação CSS forçada */
   @media screen and (max-width: 768px) and (orientation: portrait) {
-    body::before {
-      content: "🔄 Para melhor experiência, gire seu dispositivo para o modo paisagem";
+    html {
+      height: 100vw;
+      width: 100vh;
+      overflow: hidden;
+    }
+    
+    body {
+      transform: rotate(90deg);
+      transform-origin: left top;
+      width: 100vh;
+      height: 100vw;
       position: fixed;
-      top: 0;
+      top: 100vw;
       left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(13, 12, 12, 0.95);
-      color: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-      text-align: center;
-      padding: 20px;
-      font-size: 18px;
-      font-weight: 600;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
     }
     
     #root {
-      display: none;
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+    }
+  }
+
+  /* Modo PWA standalone - forçar sempre paisagem */
+  @media (display-mode: standalone) and (orientation: portrait) and (max-width: 768px) {
+    html {
+      height: 100vw;
+      width: 100vh;
+      overflow: hidden;
+    }
+    
+    body {
+      transform: rotate(90deg);
+      transform-origin: left top;
+      width: 100vh;
+      height: 100vw;
+      position: fixed;
+      top: 100vw;
+      left: 0;
+      overflow: hidden;
+      margin: 0;
+      padding: 0;
+    }
+    
+    #root {
+      width: 100%;
+      height: 100%;
+      overflow: auto;
+    }
+  }
+
+  /* Garantir que elementos responsivos funcionem bem na rotação forçada */
+  @media screen and (max-width: 768px) and (orientation: portrait) {
+    .responsive-grid {
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)) !important;
+    }
+    
+    .mobile-stack {
+      flex-direction: column !important;
+    }
+    
+    /* Ajustar modais e popups */
+    .modal-content {
+      max-width: 90vh !important;
+      max-height: 80vw !important;
     }
   }
 

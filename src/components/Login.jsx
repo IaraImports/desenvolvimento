@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -45,6 +45,7 @@ const USER_LEVELS = [
 export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [showRegisterModal, setShowRegisterModal] = useState(false);
+  const [showInstallButton, setShowInstallButton] = useState(true);
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -58,7 +59,20 @@ export default function Login() {
   });
   const [loading, setLoading] = useState(false);
 
-  const { login, register } = useAuth();
+  const { login, register, user } = useAuth();
+
+  // Esconder botão de instalação se usuário estiver logado
+  useEffect(() => {
+    if (user) {
+      setShowInstallButton(false);
+    } else {
+      // Verificar se é standalone (app já instalado)
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+      if (isStandalone) {
+        setShowInstallButton(false);
+      }
+    }
+  }, [user]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -66,6 +80,8 @@ export default function Login() {
 
     try {
       await login(formData.email, formData.password);
+      // Esconder botão de instalação após login bem-sucedido
+      setShowInstallButton(false);
     } catch (error) {
       console.error('Erro na autenticação:', error);
     } finally {
@@ -246,13 +262,14 @@ export default function Login() {
                 </a>
               </motion.div>
 
-              {/* Botão de instalação PWA */}
-              <motion.div 
-                className="text-center mt-4"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-              >
+              {/* Botão de instalação PWA - só aparece se não estiver logado */}
+              {showInstallButton && (
+                <motion.div 
+                  className="text-center mt-4"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.5 }}
+                >
                 <button
                   onClick={() => {
                     // Verificar se é standalone (já instalado)
@@ -318,6 +335,7 @@ export default function Login() {
                   </div>
                 </button>
               </motion.div>
+              )}
             </motion.form>
           </motion.div>
         </div>
