@@ -240,16 +240,16 @@ function LayoutContent({
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.6, delay: 0.2 }}
           >
-            {/* Logo preta limpa sem fundo */}
+            {/* Logo IARA HUB preta limpa sem fundo */}
             <motion.img 
               src="/logopreta.svg" 
-              alt="IARA" 
-              className="w-20 h-20 drop-shadow-2xl"
+              alt="IARA HUB" 
+              className="w-32 h-16 drop-shadow-2xl"
               animate={{ 
-                rotate: [0, 3, -3, 0],
-                scale: [1, 1.05, 1]
+                rotate: [0, 1, -1, 0],
+                scale: [1, 1.02, 1]
               }}
-              transition={{ duration: 6, repeat: Infinity }}
+              transition={{ duration: 8, repeat: Infinity }}
             />
           </motion.div>
 

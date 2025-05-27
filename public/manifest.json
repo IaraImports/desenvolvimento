@@ -1,7 +1,7 @@
 {
-  "name": "Sistema de Gestão Iara Imports",
-  "short_name": "IaraImports",
-  "description": "Sistema completo de gestão empresarial com chat interno, vendas, estoque e relatórios",
+  "name": "Sistema de Gestão IARA HUB",
+  "short_name": "IARA HUB",
+  "description": "Sistema completo de gestão empresarial IARA HUB com chat interno, vendas, estoque e relatórios",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0D0C0C",

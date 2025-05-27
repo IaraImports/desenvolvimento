@@ -11,7 +11,7 @@ export default function LoadingSpinner() {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.6 }}
       >
-        {/* Logo rosa com leve animação */}
+        {/* Logo IARA HUB rosa com leve animação */}
         <motion.div 
           className="relative"
           initial={{ opacity: 0 }}
@@ -20,13 +20,14 @@ export default function LoadingSpinner() {
         >
           <motion.img 
             src="/logorosa.svg" 
-            alt="IARA" 
-            className="w-20 h-20 drop-shadow-xl"
+            alt="IARA HUB" 
+            className="w-40 h-20 drop-shadow-xl"
             animate={{ 
-              scale: [1, 1.05, 1]
+              scale: [1, 1.03, 1],
+              rotate: [0, 1, -1, 0]
               }}
               transition={{
-                duration: 2,
+                duration: 3,
               repeat: Infinity,
               ease: "easeInOut"
               }}
@@ -40,8 +41,8 @@ export default function LoadingSpinner() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.4 }}
         >
-          <h1 className="text-3xl font-bold text-[#FF2C68] mb-2">IARA HUB</h1>
-          <p className="text-white/60 text-sm">GESTÃO INTELIGENTE</p>
+          <h1 className="text-2xl font-bold text-[#FF2C68] mb-2">Sistema de Gestão</h1>
+          <p className="text-white/60 text-sm">✨ Carregando interface...</p>
         </motion.div>
 
         {/* Loading simples */}

@@ -380,31 +380,21 @@ export default function Login() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, delay: 0.5 }}
           >
-            {/* Logo IARA sem fundo */}
+            {/* Logo IARA HUB completo */}
             <motion.div 
               className="mb-6"
               animate={{ 
-                rotate: [0, 3, -3, 0],
-                scale: [1, 1.02, 1]
+                rotate: [0, 1, -1, 0],
+                scale: [1, 1.01, 1]
               }}
-              transition={{ duration: 8, repeat: Infinity }}
+              transition={{ duration: 10, repeat: Infinity }}
             >
               <img 
                 src="/logopreta.svg" 
-                alt="IARA" 
-                className="w-96 h-auto mx-auto drop-shadow-lg"
+                alt="IARA HUB" 
+                className="w-80 h-auto mx-auto drop-shadow-lg"
               />
             </motion.div>
-            
-            {/* HUB texto */}
-            <motion.h1 
-              className="text-7xl font-bold text-black/90 tracking-[0.4em] drop-shadow-md"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.7 }}
-            >
-              HUB
-            </motion.h1>
             <motion.p 
               className="text-black/70 text-xl font-medium mt-3 drop-shadow-sm"
               initial={{ opacity: 0 }}

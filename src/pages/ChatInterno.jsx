@@ -234,6 +234,10 @@ export default function ChatInterno() {
   const [showCameraModal, setShowCameraModal] = useState(false);
   const [cameraStream, setCameraStream] = useState(null);
   
+  // Estados mobile
+  const [isMobile, setIsMobile] = useState(false);
+  const [showMobileSidebar, setShowMobileSidebar] = useState(false);
+  
   // Estados para grupos
   const [groupName, setGroupName] = useState('');
   const [groupDescription, setGroupDescription] = useState('');
@@ -244,6 +248,18 @@ export default function ChatInterno() {
   const fileInputRef = useRef(null);
   const messageInputRef = useRef(null);
   const typingTimeoutRef = useRef(null);
+
+  // Detectar mobile
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth <= 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Efeitos principais
   useEffect(() => {
@@ -1061,11 +1077,40 @@ export default function ChatInterno() {
 
   return (
     <div className="h-[calc(100vh-120px)] flex bg-[#0D0C0C] rounded-2xl border border-[#FF2C68]/30 overflow-hidden chat-container">
+      {/* Botão Menu Mobile */}
+      {isMobile && (
+        <button
+          onClick={() => setShowMobileSidebar(true)}
+          className="mobile-menu-btn"
+        >
+          <MessageCircle className="w-5 h-5" />
+        </button>
+      )}
+
+      {/* Overlay Mobile */}
+      {isMobile && showMobileSidebar && (
+        <div
+          className="mobile-overlay active"
+          onClick={() => setShowMobileSidebar(false)}
+        />
+      )}
+
       {/* Sidebar - Lista de Conversas */}
-      <div className="w-1/3 min-w-[320px] border-r border-[#FF2C68]/30 flex flex-col chat-sidebar">
+      <div className={`w-1/3 min-w-[320px] border-r border-[#FF2C68]/30 flex flex-col chat-sidebar ${
+        isMobile ? (showMobileSidebar ? 'mobile-active' : '') : ''
+      }`}>
         {/* Header da Sidebar PREMIUM */}
         <div className="p-4 border-b border-[#FF2C68]/30 bg-gradient-to-r from-[#0D0C0C] to-purple-900/10">
           <div className="flex items-center justify-between mb-4">
+            {/* Botão fechar mobile */}
+            {isMobile && (
+              <button
+                onClick={() => setShowMobileSidebar(false)}
+                className="p-2 text-white/60 hover:text-white transition-colors md:hidden"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
             <div className="flex items-center space-x-3">
               <div className="relative">
                 <div className="w-10 h-10 bg-gradient-to-br from-[#FF2C68] to-purple-600 rounded-xl flex items-center justify-center">
