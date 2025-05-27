@@ -78,33 +78,20 @@ const Dashboard = () => {
       let receitaMes = 0;
       
       try {
-        // Tentar consulta com status primeiro
-        const vendasQuery = query(
-          collection(db, 'vendas'),
-          where('status', '==', 'concluida'),
-          orderBy('createdAt', 'desc'),
-          limit(100)
-        );
-        const vendasSnap = await getDocs(vendasQuery);
-        todasVendas = vendasSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        // Consulta simples sem índice composto
+        const vendasSnap = await getDocs(collection(db, 'vendas'));
+        todasVendas = vendasSnap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(venda => venda.status === 'concluida') // Filtrar localmente
+          .sort((a, b) => {
+            const aDate = a.createdAt?.toDate?.() || new Date(0);
+            const bDate = b.createdAt?.toDate?.() || new Date(0);
+            return bDate - aDate;
+          })
+          .slice(0, 100); // Limitar a 100 registros
       } catch (error) {
-        console.warn('Erro na consulta de vendas com índice, tentando consulta simples:', error);
-        
-        try {
-          // Fallback: consulta sem where para status
-          const vendasQuery = query(
-            collection(db, 'vendas'),
-            orderBy('createdAt', 'desc'),
-            limit(100)
-          );
-          const vendasSnap = await getDocs(vendasQuery);
-          todasVendas = vendasSnap.docs
-            .map(doc => ({ id: doc.id, ...doc.data() }))
-            .filter(venda => venda.status === 'concluida'); // Filtrar localmente
-        } catch (fallbackError) {
-          console.warn('Fallback de vendas também falhou:', fallbackError);
-          todasVendas = [];
-        }
+        console.warn('Erro ao carregar vendas:', error);
+        todasVendas = [];
       }
       
       // Filtrar vendas de hoje localmente
@@ -135,16 +122,18 @@ const Dashboard = () => {
       vendasMes = vendasMesData.length;
       receitaMes = vendasMesData.reduce((acc, venda) => acc + (venda.total || 0), 0);
 
-      // Carregar clientes com tratamento de erro
+      // Carregar clientes com consulta simples
       let clientesNovos = 0;
       try {
-        const clientesQuery = query(
-          collection(db, 'clientes'),
-          orderBy('createdAt', 'desc'),
-          limit(50)
-        );
-        const clientesSnap = await getDocs(clientesQuery);
-        const todosClientes = clientesSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const clientesSnap = await getDocs(collection(db, 'clientes'));
+        const todosClientes = clientesSnap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .sort((a, b) => {
+            const aDate = a.createdAt?.toDate?.() || new Date(0);
+            const bDate = b.createdAt?.toDate?.() || new Date(0);
+            return bDate - aDate;
+          })
+          .slice(0, 50);
         
         clientesNovos = todosClientes.filter(cliente => {
           if (!cliente.createdAt) return false;
@@ -160,12 +149,13 @@ const Dashboard = () => {
         clientesNovos = 0;
       }
 
-      // Produtos com estoque baixo (consulta simples sem índice)
+      // Produtos com estoque baixo (consulta simples)
       let produtosEstoqueBaixo = 0;
       try {
-        const produtosQuery = query(collection(db, 'produtos'), limit(100));
-        const produtosSnap = await getDocs(produtosQuery);
-        const produtosData = produtosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const produtosSnap = await getDocs(collection(db, 'produtos'));
+        const produtosData = produtosSnap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .slice(0, 100);
         produtosEstoqueBaixo = produtosData.filter(produto => 
           (produto.estoque <= 10 || produto.quantidade <= 10) && 
           produto.status !== 'inativo'
@@ -175,12 +165,13 @@ const Dashboard = () => {
         produtosEstoqueBaixo = 0;
       }
 
-      // OS abertas (consulta simplificada)
+      // OS abertas (consulta simples)
       let osAbertas = 0;
       try {
-        const osQuery = query(collection(db, 'ordens_servico'), limit(50));
-        const osSnap = await getDocs(osQuery);
-        const osData = osSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const osSnap = await getDocs(collection(db, 'ordens_servico'));
+        const osData = osSnap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .slice(0, 50);
         osAbertas = osData.filter(os => 
           ['aberta', 'em_andamento', 'aguardando_peca'].includes(os.status)
         ).length;
@@ -189,12 +180,13 @@ const Dashboard = () => {
         osAbertas = 0;
       }
 
-      // Orçamentos abertos (consulta simplificada)
+      // Orçamentos abertos (consulta simples)
       let orcamentosAbertos = 0;
       try {
-        const orcamentosQuery = query(collection(db, 'orcamentos'), limit(50));
-        const orcamentosSnap = await getDocs(orcamentosQuery);
-        const orcamentosData = orcamentosSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        const orcamentosSnap = await getDocs(collection(db, 'orcamentos'));
+        const orcamentosData = orcamentosSnap.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .slice(0, 50);
         orcamentosAbertos = orcamentosData.filter(orc => orc.status === 'aberto').length;
       } catch (orcamentoError) {
         console.warn('Erro ao carregar orçamentos:', orcamentoError);

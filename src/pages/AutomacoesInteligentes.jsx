@@ -147,20 +147,28 @@ export default function AutomacoesInteligentes() {
   const loadAutomations = async () => {
     try {
       setLoading(true);
-      const automationsQuery = query(
-        collection(db, 'automacoes'),
-        where('type', '==', selectedType),
-        orderBy('createdAt', 'desc')
-      );
-      const snapshot = await getDocs(automationsQuery);
-      const automationsList = snapshot.docs.map(doc => ({
+      // Consulta simples sem índice composto
+      const snapshot = await getDocs(collection(db, 'automacoes'));
+      const allAutomations = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
-      setAutomations(automationsList);
+      
+      // Filtrar e ordenar no cliente
+      const filteredAutomations = allAutomations
+        .filter(automation => automation.type === selectedType)
+        .sort((a, b) => {
+          const aDate = a.createdAt?.toDate?.() || new Date(0);
+          const bDate = b.createdAt?.toDate?.() || new Date(0);
+          return bDate - aDate;
+        });
+      
+      setAutomations(filteredAutomations);
     } catch (error) {
       console.error('Erro ao carregar automações:', error);
       toast.error('Erro ao carregar automações');
+      // Fallback com dados de exemplo
+      setAutomations([]);
     } finally {
       setLoading(false);
     }
@@ -168,19 +176,26 @@ export default function AutomacoesInteligentes() {
 
   const loadExecutionLogs = async () => {
     try {
-      const logsQuery = query(
-        collection(db, 'automation_logs'),
-        orderBy('timestamp', 'desc'),
-        // limit(50) // Limitar logs para performance
-      );
-      const snapshot = await getDocs(logsQuery);
+      // Consulta simples sem ordenação
+      const snapshot = await getDocs(collection(db, 'automation_logs'));
       const logs = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
-      setExecutionLogs(logs);
+      
+      // Ordenar no cliente e limitar a 50
+      const sortedLogs = logs
+        .sort((a, b) => {
+          const aDate = a.timestamp?.toDate?.() || new Date(0);
+          const bDate = b.timestamp?.toDate?.() || new Date(0);
+          return bDate - aDate;
+        })
+        .slice(0, 50);
+      
+      setExecutionLogs(sortedLogs);
     } catch (error) {
       console.error('Erro ao carregar logs:', error);
+      setExecutionLogs([]);
     }
   };
 
@@ -295,18 +310,18 @@ export default function AutomacoesInteligentes() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-black via-gray-900 to-black">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-          className="w-16 h-16 border-4 border-pink-500 border-t-transparent rounded-full"
+          className="w-16 h-16 border-4 border-[#FF2C68] border-t-transparent rounded-full"
         />
       </div>
     );
   }
 
   return (
-    <div className="p-6 bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 min-h-screen">
+    <div className="p-6 bg-gradient-to-br from-black via-gray-900 to-black min-h-screen">
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: -20 }}
@@ -315,7 +330,7 @@ export default function AutomacoesInteligentes() {
       >
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-pink-500 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-gray-200 to-white bg-clip-text text-transparent">
               Automações Inteligentes
             </h1>
             <p className="text-gray-400 mt-2">
@@ -327,7 +342,7 @@ export default function AutomacoesInteligentes() {
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={() => setShowCreateModal(true)}
-            className="bg-gradient-to-r from-pink-600 to-purple-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 hover:shadow-lg transition-all duration-300"
+            className="bg-gradient-to-r from-[#FF2C68] to-pink-600 text-white px-6 py-3 rounded-lg font-medium flex items-center gap-2 hover:shadow-lg transition-all duration-300"
           >
             <Plus className="w-5 h-5" />
             Nova Automação
@@ -378,10 +393,16 @@ export default function AutomacoesInteligentes() {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: index * 0.1 }}
-            className={`bg-gradient-to-br from-slate-800/50 to-${stat.color}-900/30 backdrop-blur-sm border border-slate-700 rounded-2xl p-6`}
+            className="bg-black/40 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all"
           >
             <div className="flex items-center justify-between mb-4">
-              <stat.icon className={`w-8 h-8 text-${stat.color}-400`} />
+              <stat.icon className={`w-8 h-8 ${
+                stat.color === 'blue' ? 'text-blue-400' :
+                stat.color === 'green' ? 'text-green-400' :
+                stat.color === 'purple' ? 'text-purple-400' :
+                stat.color === 'emerald' ? 'text-emerald-400' :
+                'text-white'
+              }`} />
               <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">
                 {stat.change}
               </span>
@@ -414,7 +435,7 @@ export default function AutomacoesInteligentes() {
               className={`flex items-center gap-3 px-6 py-4 rounded-xl transition-all duration-300 min-w-fit ${
                 selectedType === type.id
                   ? `bg-gradient-to-r ${type.gradient} text-white shadow-lg`
-                  : 'bg-slate-800/50 text-gray-300 hover:bg-slate-800 border border-slate-700'
+                  : 'bg-black/40 text-gray-300 hover:bg-black/60 border border-white/10'
               }`}
             >
               <type.icon className="w-5 h-5" />
@@ -437,7 +458,7 @@ export default function AutomacoesInteligentes() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ delay: index * 0.1 }}
-              className="bg-gradient-to-br from-slate-800/50 to-slate-700/30 backdrop-blur-sm border border-slate-700 rounded-2xl p-6"
+              className="bg-black/40 backdrop-blur-sm border border-white/10 rounded-2xl p-6 hover:border-white/20 transition-all"
             >
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center gap-3">
@@ -525,7 +546,7 @@ export default function AutomacoesInteligentes() {
               </div>
 
               {/* Status Indicator */}
-              <div className="mt-4 pt-4 border-t border-slate-700">
+              <div className="mt-4 pt-4 border-t border-white/10">
                 <div className={`flex items-center gap-2 text-sm ${
                   automation.active ? 'text-green-400' : 'text-gray-400'
                 }`}>
@@ -544,11 +565,11 @@ export default function AutomacoesInteligentes() {
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => setShowCreateModal(true)}
-          className="bg-gradient-to-br from-slate-800/30 to-purple-900/20 backdrop-blur-sm border border-dashed border-slate-600 rounded-2xl p-6 flex flex-col items-center justify-center gap-4 hover:border-purple-400 transition-all duration-300"
+          className="bg-black/20 backdrop-blur-sm border border-dashed border-white/20 rounded-2xl p-6 flex flex-col items-center justify-center gap-4 hover:border-[#FF2C68] transition-all duration-300"
         >
-          <div className="p-4 bg-purple-500/20 rounded-full">
-            <Plus className="w-8 h-8 text-purple-400" />
-          </div>
+                      <div className="p-4 bg-[#FF2C68]/20 rounded-full">
+              <Plus className="w-8 h-8 text-[#FF2C68]" />
+            </div>
           <div className="text-center">
             <h3 className="font-semibold text-white">Nova Automação</h3>
             <p className="text-sm text-gray-400">Clique para criar</p>
@@ -560,18 +581,18 @@ export default function AutomacoesInteligentes() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-br from-slate-800/50 to-slate-700/30 backdrop-blur-sm border border-slate-700 rounded-2xl p-6"
+        className="bg-black/40 backdrop-blur-sm border border-white/10 rounded-2xl p-6"
       >
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
-            <Activity className="w-6 h-6 text-purple-400" />
+            <Activity className="w-6 h-6 text-[#FF2C68]" />
             <h3 className="text-xl font-bold text-white">Logs de Execução</h3>
           </div>
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={loadExecutionLogs}
-            className="bg-slate-700 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 hover:bg-slate-600 transition-all duration-300"
+            className="bg-black/50 text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 hover:bg-black/70 transition-all duration-300 border border-white/20"
           >
             <RefreshCw className="w-4 h-4" />
             Atualizar
@@ -585,7 +606,7 @@ export default function AutomacoesInteligentes() {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="flex items-center justify-between p-4 bg-slate-800/50 rounded-lg border border-slate-700"
+              className="flex items-center justify-between p-4 bg-black/30 rounded-lg border border-white/10"
             >
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-lg ${
@@ -667,7 +688,7 @@ function AutomationModal({ automation, onClose, onSave, selectedType }) {
         initial={{ scale: 0.9, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         exit={{ scale: 0.9, opacity: 0 }}
-        className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-slate-700"
+        className="bg-black/90 backdrop-blur-xl rounded-2xl p-6 w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-white/20"
       >
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-bold text-white">
@@ -675,7 +696,7 @@ function AutomationModal({ automation, onClose, onSave, selectedType }) {
           </h2>
           <button
             onClick={onClose}
-            className="p-2 rounded-lg bg-slate-700 text-gray-300 hover:bg-slate-600 transition-colors"
+            className="p-2 rounded-lg bg-black/50 text-gray-300 hover:bg-black/70 transition-colors border border-white/20"
           >
             ✕
           </button>
@@ -692,7 +713,7 @@ function AutomationModal({ automation, onClose, onSave, selectedType }) {
                 type="text"
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full bg-slate-700 border border-slate-600 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full bg-black/50 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:border-[#FF2C68] focus:ring-1 focus:ring-[#FF2C68]/30 focus:outline-none"
                 placeholder="Ex: Lembrete de Follow-up"
               />
             </div>
@@ -705,7 +726,7 @@ function AutomationModal({ automation, onClose, onSave, selectedType }) {
                 type="text"
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                className="w-full bg-slate-700 border border-slate-600 text-white rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full bg-black/50 border border-gray-600 rounded-lg px-4 py-2 text-white placeholder-gray-400 focus:border-[#FF2C68] focus:ring-1 focus:ring-[#FF2C68]/30 focus:outline-none"
                 placeholder="Descrição da automação"
               />
             </div>
@@ -727,8 +748,8 @@ function AutomationModal({ automation, onClose, onSave, selectedType }) {
                   })}
                   className={`p-4 rounded-lg border transition-all duration-200 ${
                     formData.trigger.type === trigger.id
-                      ? 'border-purple-500 bg-purple-500/20 text-purple-300'
-                      : 'border-slate-600 bg-slate-700/50 text-gray-300 hover:border-slate-500'
+                      ? 'border-[#FF2C68] bg-[#FF2C68]/20 text-[#FF2C68]'
+                      : 'border-gray-600 bg-black/50 text-gray-300 hover:border-gray-500'
                   }`}
                 >
                   <trigger.icon className="w-6 h-6 mx-auto mb-2" />
@@ -746,7 +767,7 @@ function AutomationModal({ automation, onClose, onSave, selectedType }) {
             </h3>
             <div className="space-y-4">
               {formData.actions.map((action, index) => (
-                <div key={index} className="bg-slate-700/50 rounded-lg p-4 border border-slate-600">
+                <div key={index} className="bg-black/50 rounded-lg p-4 border border-gray-600">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-sm font-medium text-gray-300">Ação {index + 1}</span>
                     {formData.actions.length > 1 && (
@@ -774,7 +795,7 @@ function AutomationModal({ automation, onClose, onSave, selectedType }) {
                         className={`p-3 rounded-lg border transition-all duration-200 ${
                           action.type === actionType.id
                             ? 'border-green-500 bg-green-500/20 text-green-300'
-                            : 'border-slate-600 bg-slate-700 text-gray-300 hover:border-slate-500'
+                            : 'border-gray-600 bg-black/50 text-gray-300 hover:border-gray-500'
                         }`}
                       >
                         <actionType.icon className="w-5 h-5 mx-auto mb-1" />
@@ -792,7 +813,7 @@ function AutomationModal({ automation, onClose, onSave, selectedType }) {
                     actions: [...formData.actions, { type: 'email', config: {} }]
                   });
                 }}
-                className="w-full p-4 border-2 border-dashed border-slate-600 rounded-lg text-gray-400 hover:border-slate-500 hover:text-gray-300 transition-all duration-200"
+                className="w-full p-4 border-2 border-dashed border-gray-600 rounded-lg text-gray-400 hover:border-gray-500 hover:text-gray-300 transition-all duration-200"
               >
                 <Plus className="w-5 h-5 mx-auto mb-2" />
                 Adicionar Ação
@@ -801,16 +822,16 @@ function AutomationModal({ automation, onClose, onSave, selectedType }) {
           </div>
 
           {/* Save/Cancel Buttons */}
-          <div className="flex items-center justify-end gap-4 pt-6 border-t border-slate-700">
+          <div className="flex items-center justify-end gap-4 pt-6 border-t border-white/20">
             <button
               onClick={onClose}
-              className="px-6 py-2 bg-slate-700 text-gray-300 rounded-lg hover:bg-slate-600 transition-colors"
+              className="px-6 py-2 bg-black/50 text-gray-300 rounded-lg hover:bg-black/70 transition-colors border border-gray-600"
             >
               Cancelar
             </button>
             <button
               onClick={handleSave}
-              className="px-6 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all duration-300"
+              className="px-6 py-2 bg-gradient-to-r from-[#FF2C68] to-pink-600 text-white rounded-lg hover:shadow-lg transition-all duration-300"
             >
               {automation ? 'Salvar Alterações' : 'Criar Automação'}
             </button>

@@ -310,22 +310,6 @@ export default function Servicos() {
   // Usar debounce para otimizar busca
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
-  const filteredOS = useMemo(() => {
-    return ordensServico.filter(os => {
-      const matchSearch = !debouncedSearchTerm || 
-        os.cliente?.nome?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        os.numero?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        os.equipamento?.marca?.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
-        os.equipamento?.modelo?.toLowerCase().includes(debouncedSearchTerm.toLowerCase());
-    
-    const matchStatus = statusFilter === 'todas' || os.servico?.status === statusFilter;
-    const matchTecnico = tecnicoFilter === 'todos' || os.servico?.tecnico === tecnicoFilter;
-    const matchPrioridade = prioridadeFilter === 'todas' || os.problema?.prioridade === prioridadeFilter;
-    
-    return matchSearch && matchStatus && matchTecnico && matchPrioridade;
-  });
-  }, [ordensServico, debouncedSearchTerm, statusFilter, tecnicoFilter, prioridadeFilter]);
-
   const getStatusColor = (status) => {
     const statusOption = statusOptions.find(s => s.value === status);
     return statusOption?.color || 'text-gray-400';
@@ -356,6 +340,42 @@ export default function Servicos() {
     [ordensServico]
   );
 
+  // Aplicar filtros com debounce
+  const filteredOS = useMemo(() => {
+    return ordensServico.filter(os => {
+      // Filtro por termo de busca com debounce
+      if (debouncedSearchTerm) {
+        const term = debouncedSearchTerm.toLowerCase();
+        const searchableText = `
+          ${os.cliente?.nome || ''} 
+          ${os.servico?.numero || ''} 
+          ${os.equipamento?.marca || ''} 
+          ${os.equipamento?.modelo || ''}
+          ${os.equipamento?.tipo || ''}
+        `.toLowerCase();
+        
+        if (!searchableText.includes(term)) return false;
+      }
+
+      // Filtro por status
+      if (statusFilter !== 'todas' && os.servico?.status !== statusFilter) {
+        return false;
+      }
+
+      // Filtro por técnico
+      if (tecnicoFilter !== 'todos' && os.servico?.tecnico !== tecnicoFilter) {
+        return false;
+      }
+
+      // Filtro por prioridade
+      if (prioridadeFilter !== 'todas' && os.problema?.prioridade !== prioridadeFilter) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [ordensServico, debouncedSearchTerm, statusFilter, tecnicoFilter, prioridadeFilter]);
+
   const stats = useMemo(() => ({
     total: filteredOS.length,
     aguardando: filteredOS.filter(os => ['aguardando', 'diagnosticando'].includes(os.servico?.status)).length,
@@ -373,43 +393,75 @@ export default function Servicos() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
+      {/* Header Profissional */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className="flex items-center justify-between"
       >
-        <div>
-          <h1 className="text-4xl font-bold text-white mb-4">Gestão de Serviços</h1>
-          <p className="text-white/60 text-lg">
-            {userProfile?.level === 'TECNICO' 
-              ? `Suas ordens de serviço - ${user?.displayName || 'Técnico'}`
-              : 'Acompanhe todas as ordens de serviço'
-            }
-          </p>
+        <div className="flex items-center space-x-4">
+          <div className="w-16 h-16 bg-gradient-to-br from-[#FF2C68] to-pink-600 rounded-2xl flex items-center justify-center shadow-xl">
+            <Wrench className="w-8 h-8 text-white" />
+          </div>
+          <div>
+            <div className="flex items-center space-x-3 mb-2">
+              <h1 className="text-4xl font-bold text-white">Gestão de Serviços</h1>
+              {userProfile?.level === 'TECNICO' && (
+                <span className="bg-blue-500/20 text-blue-400 px-3 py-1 rounded-full text-sm font-medium">
+                  TÉCNICO
+                </span>
+              )}
+            </div>
+            <div className="flex items-center space-x-4 text-white/60">
+              <span className="text-lg">
+                {userProfile?.level === 'TECNICO' 
+                  ? `Suas ordens de serviço - ${user?.displayName || 'Técnico'}`
+                  : 'Acompanhe todas as ordens de serviço'
+                }
+              </span>
+              <span>•</span>
+              <span className="bg-[#FF2C68]/20 px-3 py-1 rounded-full text-sm font-medium">
+                {ordensServico.length} OS Total
+              </span>
+              <span>•</span>
+              <span className="text-sm">
+                {stats.andamento} em Andamento
+              </span>
+            </div>
+          </div>
         </div>
         <div className="flex items-center space-x-4">
-          <div className="flex bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl p-1">
+          {canCreateServices && (
+            <button
+              onClick={() => navigate('/vendas/os')}
+              className="bg-[#FF2C68] hover:bg-[#FF2C68]/80 text-white px-6 py-3 rounded-xl flex items-center space-x-2 font-medium transition-colors shadow-lg"
+            >
+              <Plus className="w-5 h-5" />
+              <span>Nova OS</span>
+            </button>
+          )}
+          
+          <div className="flex bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl p-1 shadow-lg">
             <button
               onClick={() => setViewMode('grid')}
-              className={`p-2 rounded-lg transition-colors ${viewMode === 'grid' ? 'bg-[#FF2C68] text-white' : 'text-white/60 hover:text-white'}`}
+              className={`p-3 rounded-lg transition-all duration-200 ${viewMode === 'grid' ? 'bg-[#FF2C68] text-white shadow-md' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
               title="Visualização em Grade"
             >
-              <BarChart3 className="w-4 h-4" />
+              <BarChart3 className="w-5 h-5" />
             </button>
             <button
               onClick={() => setViewMode('list')}
-              className={`p-2 rounded-lg transition-colors ${viewMode === 'list' ? 'bg-[#FF2C68] text-white' : 'text-white/60 hover:text-white'}`}
+              className={`p-3 rounded-lg transition-all duration-200 ${viewMode === 'list' ? 'bg-[#FF2C68] text-white shadow-md' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
               title="Visualização em Lista"
             >
-              <Activity className="w-4 h-4" />
+              <Activity className="w-5 h-5" />
             </button>
             <button
               onClick={() => setViewMode('calendar')}
-              className={`p-2 rounded-lg transition-colors ${viewMode === 'calendar' ? 'bg-[#FF2C68] text-white' : 'text-white/60 hover:text-white'}`}
+              className={`p-3 rounded-lg transition-all duration-200 ${viewMode === 'calendar' ? 'bg-[#FF2C68] text-white shadow-md' : 'text-white/60 hover:text-white hover:bg-white/5'}`}
               title="Visualização em Calendário"
             >
-              <Calendar className="w-4 h-4" />
+              <Calendar className="w-5 h-5" />
             </button>
           </div>
         </div>

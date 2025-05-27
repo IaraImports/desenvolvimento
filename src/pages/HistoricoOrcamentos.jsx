@@ -108,7 +108,7 @@ export default function HistoricoOrcamentos() {
 
   const duplicarOrcamento = (orcamento) => {
     // Navegar para a página de orçamento com os dados preenchidos
-    navigate('/orcamento', { 
+    navigate('/vendas/orcamento', { 
       state: { 
         orcamentoBase: {
           ...orcamento,
@@ -135,213 +135,171 @@ export default function HistoricoOrcamentos() {
     }
   };
 
-  // Função para gerar PDF do orçamento
-  const downloadOrcamentoPDF = async (orcamento) => {
-    try {
-      toast.loading('Gerando PDF do orçamento...');
-      
-      // Importar dinamicamente as bibliotecas
-      const jsPDF = (await import('jspdf')).default;
-      
-      // Criar PDF
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      
-      // Configurações
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const margin = 15;
-      const lineHeight = 7;
-      let currentY = margin;
-
-      // Função para adicionar nova página se necessário
-      const checkPageBreak = (neededHeight) => {
-        if (currentY + neededHeight > 280) {
-          pdf.addPage();
-          currentY = margin;
-        }
-      };
-
-      // Resetar cor do texto para preto
-      pdf.setTextColor(0, 0, 0);
-
-      // Cabeçalho com Logo
-      pdf.setFontSize(24);
-      pdf.setFont("helvetica", "bold");
-      pdf.text('ORÇAMENTO', margin, currentY);
-      
-      // Logo IARA HUB
-      pdf.setFillColor(255, 44, 104); // Cor principal #FF2C68
-      pdf.rect(pageWidth - margin - 25, currentY - 10, 20, 20, 'F');
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(8);
-      pdf.text('IARA', pageWidth - margin - 20, currentY - 2);
-      
-      pdf.setTextColor(255, 44, 104); // Cor #FF2C68
-      pdf.setFontSize(18);
-      pdf.setFont("helvetica", "bold");
-      pdf.text('IARA HUB', pageWidth - margin - 40, currentY + 15);
-      pdf.setFontSize(10);
-      pdf.setFont("helvetica", "normal");
-      pdf.text('Assistência Técnica Especializada', pageWidth - margin - 60, currentY + 22);
-
-      currentY += 35;
-
-      // Resetar cor para preto
-      pdf.setTextColor(0, 0, 0);
-
-      // Número do Orçamento
-      pdf.setFontSize(14);
-      pdf.setFont("helvetica", "bold");
-      pdf.text(`Orçamento Nº: ${orcamento.numero}`, margin, currentY);
-      currentY += 10;
-
-      // Data e Status
-      pdf.setFontSize(10);
-      pdf.setFont("helvetica", "normal");
-      pdf.text(`Data: ${orcamento.createdAt?.toLocaleDateString('pt-BR')}`, margin, currentY);
-      pdf.text(`Status: ${getStatusText(orcamento.status)}`, pageWidth - margin - 50, currentY);
-      currentY += 15;
-
-      // Dados do Cliente
-      checkPageBreak(25);
-      pdf.setFontSize(12);
-      pdf.setFont("helvetica", "bold");
-      pdf.text('DADOS DO CLIENTE', margin, currentY);
-      currentY += 8;
-      
-      pdf.setFontSize(10);
-      pdf.setFont("helvetica", "normal");
-      pdf.text(`Nome: ${orcamento.cliente?.nome || 'N/A'}`, margin, currentY);
-      currentY += lineHeight;
-      if (orcamento.cliente?.telefone) {
-        pdf.text(`Telefone: ${orcamento.cliente.telefone}`, margin, currentY);
-        currentY += lineHeight;
+  const editarOrcamento = (orcamento) => {
+    // Navegar para a página de orçamento com os dados para edição
+    navigate('/vendas/orcamento', { 
+      state: { 
+        editandoOrcamento: orcamento
       }
-      if (orcamento.cliente?.email) {
-        pdf.text(`Email: ${orcamento.cliente.email}`, margin, currentY);
-        currentY += lineHeight;
-      }
-      if (orcamento.cliente?.empresa) {
-        pdf.text(`Empresa: ${orcamento.cliente.empresa}`, margin, currentY);
-        currentY += lineHeight;
-      }
-      currentY += 10;
+    });
+    toast.success('Redirecionando para edição do orçamento...');
+  };
 
-      // Itens do Orçamento
-      checkPageBreak(40);
-      pdf.setFontSize(12);
-      pdf.setFont("helvetica", "bold");
-      pdf.text('ITENS DO ORÇAMENTO', margin, currentY);
-      currentY += 8;
-      
-      // Cabeçalho da tabela
-      pdf.setFontSize(9);
-      pdf.setFont("helvetica", "bold");
-      pdf.text('Item', margin, currentY);
-      pdf.text('Qtd', margin + 100, currentY);
-      pdf.text('Valor Unit.', margin + 125, currentY);
-      pdf.text('Total', margin + 155, currentY);
-      currentY += 5;
-      
-      // Linha separadora
-      pdf.line(margin, currentY, pageWidth - margin, currentY);
-      currentY += 5;
-      
-      pdf.setFont("helvetica", "normal");
-      
-      if (orcamento.itens && orcamento.itens.length > 0) {
-        orcamento.itens.forEach((item) => {
-          checkPageBreak(10);
-          
-          const nomeItem = pdf.splitTextToSize(item.nome || 'Item', 95);
-          pdf.text(nomeItem, margin, currentY);
-          pdf.text(item.quantidade?.toString() || '1', margin + 100, currentY);
-          pdf.text(`R$ ${(item.valorUnitario || 0).toFixed(2)}`, margin + 125, currentY);
-          pdf.text(`R$ ${(item.valorTotal || 0).toFixed(2)}`, margin + 155, currentY);
-          
-          currentY += lineHeight * Math.max(1, nomeItem.length);
-        });
-      } else {
-        pdf.text('Nenhum item registrado', margin, currentY);
-        currentY += lineHeight;
-      }
-      
-      currentY += 10;
+  const downloadPDF = (orcamento) => {
+    // Criar um elemento temporário para impressão
+    const printWindow = window.open('', '_blank');
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Orçamento ${orcamento.numero}</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: Arial, sans-serif; color: #000; background: white; }
+            .container { max-width: 800px; margin: 0 auto; padding: 20px; }
+            .header { border-bottom: 2px solid #ccc; padding-bottom: 20px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: start; }
+            .logo { text-align: right; }
+            .logo h2 { color: #e91e63; font-size: 24px; margin-bottom: 5px; }
+            .title h1 { font-size: 28px; color: #333; margin-bottom: 5px; }
+            .status { background: ${getStatusColor(orcamento.status)}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; display: inline-block; }
+            .section { margin-bottom: 20px; }
+            .section h3 { font-size: 16px; font-weight: bold; color: #333; margin-bottom: 10px; }
+            .cliente-info { background: #f5f5f5; padding: 15px; border-radius: 8px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+            .cliente-info p { margin-bottom: 5px; }
+            table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+            th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+            th { background: #f5f5f5; font-weight: bold; }
+            .text-center { text-align: center; }
+            .text-right { text-align: right; }
+            .totals { margin-left: auto; width: 250px; }
+            .totals table { width: 100%; }
+            .total-row { background: #f5f5f5; font-weight: bold; font-size: 16px; }
+            .footer { border-top: 2px solid #ccc; padding-top: 15px; text-align: center; color: #666; font-size: 12px; }
+            .observacoes { background: #f5f5f5; padding: 15px; border-radius: 8px; }
+            .validade { background: #f5f5f5; padding: 15px; border-radius: 8px; }
+            .expired { color: #d32f2f; font-weight: bold; }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <!-- Cabeçalho -->
+            <div class="header">
+              <div class="title">
+                <h1>ORÇAMENTO</h1>
+                <p>Nº ${orcamento.numero}</p>
+                <span class="status">${getStatusText(orcamento.status)}</span>
+              </div>
+              <div class="logo">
+                <h2>IARA HUB</h2>
+                <p>Sistema de Gestão</p>
+                <p>${orcamento.createdAt?.toLocaleDateString('pt-BR')}</p>
+              </div>
+            </div>
 
-      // Totais
-      checkPageBreak(30);
-      pdf.line(margin, currentY, pageWidth - margin, currentY);
-      currentY += 8;
-      
-      pdf.setFontSize(10);
-      if (orcamento.subtotal && orcamento.subtotal !== orcamento.total) {
-        pdf.text(`Subtotal: R$ ${(orcamento.subtotal || 0).toFixed(2)}`, margin + 100, currentY);
-        currentY += lineHeight;
-      }
-      
-      if (orcamento.desconto && orcamento.desconto > 0) {
-        pdf.text(`Desconto: R$ ${(orcamento.desconto || 0).toFixed(2)}`, margin + 100, currentY);
-        currentY += lineHeight;
-      }
-      
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(12);
-      pdf.text(`TOTAL: R$ ${(orcamento.total || 0).toFixed(2)}`, margin + 100, currentY);
-      currentY += 20;
+            <!-- Dados do Cliente -->
+            <div class="section">
+              <h3>DADOS DO CLIENTE</h3>
+              <div class="cliente-info">
+                <div>
+                  <p><strong>Nome:</strong> ${orcamento.cliente?.nome || 'Não informado'}</p>
+                  <p><strong>Email:</strong> ${orcamento.cliente?.email || 'Não informado'}</p>
+                  <p><strong>Telefone:</strong> ${orcamento.cliente?.telefone || 'Não informado'}</p>
+                </div>
+                <div>
+                  <p><strong>Empresa:</strong> ${orcamento.cliente?.empresa || 'Não informado'}</p>
+                  <p><strong>Endereço:</strong> ${orcamento.cliente?.endereco || 'Não informado'}</p>
+                </div>
+              </div>
+            </div>
 
-      // Validade
-      checkPageBreak(25);
-      pdf.setFontSize(12);
-      pdf.setFont("helvetica", "bold");
-      pdf.text('VALIDADE', margin, currentY);
-      currentY += 8;
-      
-      pdf.setFontSize(10);
-      pdf.setFont("helvetica", "normal");
-      pdf.text(`Válido até: ${orcamento.validoAte?.toLocaleDateString('pt-BR')}`, margin, currentY);
-      currentY += lineHeight;
-      
-      if (isOrcamentoExpirado(orcamento.validoAte)) {
-        pdf.setTextColor(255, 0, 0);
-        pdf.text('⚠️ Este orçamento está EXPIRADO', margin, currentY);
-        pdf.setTextColor(0, 0, 0);
-        currentY += lineHeight;
-      }
-      currentY += 10;
+            <!-- Itens -->
+            <div class="section">
+              <h3>ITENS DO ORÇAMENTO</h3>
+              <table>
+                <thead>
+                  <tr>
+                    <th>Item</th>
+                    <th class="text-center">Qtd</th>
+                    <th class="text-right">Valor Unit.</th>
+                    <th class="text-right">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${orcamento.itens?.map(item => `
+                    <tr>
+                      <td>
+                        ${item.tipo === 'servico' ? '<span style="background: #e3f2fd; color: #1976d2; padding: 2px 6px; border-radius: 3px; font-size: 10px; margin-right: 8px;">SERVIÇO</span>' : ''}
+                        ${item.nome}
+                      </td>
+                      <td class="text-center">${item.quantidade}</td>
+                      <td class="text-right">R$ ${item.valorUnitario?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                      <td class="text-right">R$ ${item.valorTotal?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                    </tr>
+                  `).join('') || '<tr><td colspan="4">Nenhum item encontrado</td></tr>'}
+                </tbody>
+              </table>
+            </div>
 
-      // Observações
-      if (orcamento.observacoes) {
-        checkPageBreak(25);
-        pdf.setFontSize(12);
-        pdf.setFont("helvetica", "bold");
-        pdf.text('OBSERVAÇÕES', margin, currentY);
-        currentY += 8;
-        
-        pdf.setFontSize(10);
-        pdf.setFont("helvetica", "normal");
-        const obsText = pdf.splitTextToSize(orcamento.observacoes, pageWidth - 2 * margin);
-        pdf.text(obsText, margin, currentY);
-        currentY += obsText.length * lineHeight + 10;
-      }
+            <!-- Totais -->
+            <div class="totals">
+              <table>
+                <tr>
+                  <td>Subtotal:</td>
+                  <td class="text-right">R$ ${orcamento.subtotal?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                </tr>
+                ${orcamento.desconto > 0 ? `
+                <tr style="color: #d32f2f;">
+                  <td>Desconto:</td>
+                  <td class="text-right">- R$ ${orcamento.desconto?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                </tr>
+                ` : ''}
+                <tr class="total-row">
+                  <td>Total:</td>
+                  <td class="text-right">R$ ${orcamento.total?.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</td>
+                </tr>
+              </table>
+            </div>
 
-      // Rodapé
-      currentY = Math.max(currentY, 250);
-      pdf.setFontSize(8);
-      pdf.setFont("helvetica", "normal");
-      pdf.text('IARA HUB - Assistência Técnica Especializada', margin, currentY);
-      pdf.text(`Documento gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, margin, currentY + 5);
+            ${orcamento.observacoes ? `
+            <!-- Observações -->
+            <div class="section">
+              <h3>OBSERVAÇÕES</h3>
+              <div class="observacoes">
+                <p>${orcamento.observacoes}</p>
+              </div>
+            </div>
+            ` : ''}
 
-      // Baixar o PDF
-      const nomeArquivo = `Orcamento_${orcamento.numero}_${orcamento.cliente?.nome?.replace(/[^a-zA-Z0-9]/g, '_') || 'cliente'}.pdf`;
-      pdf.save(nomeArquivo);
-      
-      toast.dismiss();
-      toast.success('PDF do orçamento gerado com sucesso!');
-      
-    } catch (error) {
-      console.error('Erro ao gerar PDF do orçamento:', error);
-      toast.dismiss();
-      toast.error('Erro ao gerar PDF. Tente novamente.');
-    }
+            <!-- Validade -->
+            <div class="section">
+              <h3>VALIDADE</h3>
+              <div class="validade">
+                <p>Válido até: <strong>${orcamento.validoAte?.toLocaleDateString('pt-BR')}</strong></p>
+                ${isOrcamentoExpirado(orcamento.validoAte) ? '<p class="expired">⚠️ Este orçamento está EXPIRADO</p>' : ''}
+              </div>
+            </div>
+
+            <!-- Rodapé -->
+            <div class="footer">
+              <p>IARA HUB - Sistema de Gestão Comercial</p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+    
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    
+    // Aguardar o carregamento e imprimir
+    printWindow.onload = () => {
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 500);
+    };
+
+    toast.success('Abrindo orçamento para impressão/PDF...');
   };
 
   const PreviewOrcamento = ({ orcamento }) => (
@@ -484,7 +442,7 @@ export default function HistoricoOrcamentos() {
         </div>
         <div className="flex items-center space-x-2">
           <button
-            onClick={() => navigate('/orcamento')}
+            onClick={() => navigate('/vendas/orcamento')}
             className="bg-[#FF2C68] hover:bg-[#FF2C68]/80 text-white px-4 py-2 rounded-xl flex items-center space-x-2 transition-colors"
           >
             <FileText className="w-4 h-4" />
@@ -543,7 +501,7 @@ export default function HistoricoOrcamentos() {
                 : 'Nenhum orçamento encontrado'}
             </p>
             <button
-              onClick={() => navigate('/orcamento')}
+              onClick={() => navigate('/vendas/orcamento')}
               className="mt-4 bg-[#FF2C68] hover:bg-[#FF2C68]/80 text-white px-4 py-2 rounded-xl transition-colors"
             >
               Criar Primeiro Orçamento
@@ -616,10 +574,18 @@ export default function HistoricoOrcamentos() {
                       >
                         <Eye className="w-4 h-4" />
                       </button>
-
+                      
                       <button
-                        onClick={() => downloadOrcamentoPDF(orcamento)}
-                        className="p-2 bg-purple-500/20 border border-purple-500/30 rounded-lg text-purple-400 hover:bg-purple-500/30 transition-colors"
+                        onClick={() => editarOrcamento(orcamento)}
+                        className="p-2 bg-[#FF2C68]/20 border border-[#FF2C68]/30 rounded-lg text-[#FF2C68] hover:bg-[#FF2C68]/30 transition-colors"
+                        title="Editar Orçamento"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      
+                      <button
+                        onClick={() => downloadPDF(orcamento)}
+                        className="p-2 bg-green-500/20 border border-green-500/30 rounded-lg text-green-400 hover:bg-green-500/30 transition-colors"
                         title="Baixar PDF"
                       >
                         <Download className="w-4 h-4" />
@@ -672,11 +638,18 @@ export default function HistoricoOrcamentos() {
                 </h3>
                 <div className="flex items-center space-x-2">
                   <button 
-                    onClick={() => downloadOrcamentoPDF(orcamentoSelecionado)}
-                    className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+                    onClick={() => downloadPDF(orcamentoSelecionado)}
+                    className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
                   >
                     <Download className="w-4 h-4" />
                     <span>Baixar PDF</span>
+                  </button>
+                  <button
+                    onClick={() => editarOrcamento(orcamentoSelecionado)}
+                    className="bg-[#FF2C68] hover:bg-[#FF2C68]/80 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors"
+                  >
+                    <Edit className="w-4 h-4" />
+                    <span>Editar</span>
                   </button>
                   <button
                     onClick={() => setShowPreview(false)}

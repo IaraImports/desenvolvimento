@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import {
   Zap,
   Bot,
@@ -31,7 +30,15 @@ import {
   Cpu,
   Database,
   Cloud,
-  RefreshCw
+  RefreshCw,
+  Activity,
+  Timer,
+  Filter,
+  Search,
+  Brain,
+  Cog,
+  Star,
+  Lightbulb
 } from 'lucide-react';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, Timestamp, query, where, orderBy } from 'firebase/firestore';
 import { db } from '../config/firebase';
@@ -42,77 +49,91 @@ export default function Automacoes() {
   const [automacoes, setAutomacoes] = useState([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [editingAutomacao, setEditingAutomacao] = useState(null);
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filtroStatus, setFiltroStatus] = useState('todos');
   
   // Form state
   const [formData, setFormData] = useState({
     nome: '',
     tipo: 'alerta_estoque',
-    condicoes: {},
-    acoes: [],
+    descricao: '',
+    condicoes: {
+      valorLimite: 5,
+      operador: 'menor_igual',
+      campo: 'estoque'
+    },
+    acoes: ['notificacao_sistema'],
     ativo: true,
-    frequencia: 'tempo_real'
+    frequencia: 'tempo_real',
+    canaisNotificacao: ['dashboard'],
+    prioridade: 'media'
   });
 
   const tiposAutomacao = [
     {
       id: 'alerta_estoque',
-      nome: 'Alerta de Estoque',
-      descricao: 'Notifica quando produtos estão com estoque baixo',
+      nome: 'Controle de Estoque',
+      descricao: 'Monitor automático de níveis de estoque com alertas inteligentes',
       icon: Package,
-      color: 'orange'
+      categoria: 'Operacional'
     },
     {
       id: 'meta_vendas',
-      nome: 'Meta de Vendas',
-      descricao: 'Acompanha metas e envia relatórios de performance',
+      nome: 'Performance de Vendas',
+      descricao: 'Acompanhamento de metas com relatórios automáticos',
       icon: Target,
-      color: 'green'
+      categoria: 'Comercial'
     },
     {
       id: 'cliente_inativo',
-      nome: 'Cliente Inativo',
-      descricao: 'Identifica clientes inativos para reativação',
+      nome: 'Reativação de Clientes',
+      descricao: 'Identifica e engaja clientes inativos automaticamente',
       icon: Users,
-      color: 'blue'
+      categoria: 'CRM'
     },
     {
       id: 'backup_automatico',
-      nome: 'Backup Automático',
-      descricao: 'Realiza backup dos dados periodicamente',
+      nome: 'Backup Inteligente',
+      descricao: 'Sistema de backup automático com verificação de integridade',
       icon: Database,
-      color: 'purple'
+      categoria: 'Segurança'
     },
     {
-      id: 'relatorio_diario',
-      nome: 'Relatório Diário',
-      descricao: 'Envia relatórios automáticos por período',
-      icon: FileText,
-      color: 'cyan'
+      id: 'relatorio_financeiro',
+      nome: 'Relatórios Financeiros',
+      descricao: 'Análises financeiras automáticas e alertas de fluxo de caixa',
+      icon: DollarSign,
+      categoria: 'Financeiro'
     },
     {
       id: 'aniversario_cliente',
-      nome: 'Aniversário de Cliente',
-      descricao: 'Envia mensagens de aniversário automáticas',
+      nome: 'Marketing Personalizado',
+      descricao: 'Campanhas automáticas baseadas em datas especiais',
       icon: Calendar,
-      color: 'pink'
+      categoria: 'Marketing'
     }
   ];
 
   const canaisNotificacao = [
-    { id: 'email', nome: 'Email', icon: Mail, color: 'blue' },
-    { id: 'whatsapp', nome: 'WhatsApp', icon: MessageSquare, color: 'green' },
-    { id: 'sms', nome: 'SMS', icon: Smartphone, color: 'purple' },
-    { id: 'push', nome: 'Push', icon: Bell, color: 'orange' },
-    { id: 'dashboard', nome: 'Dashboard', icon: BarChart3, color: 'cyan' }
+    { id: 'email', nome: 'Email', icon: Mail },
+    { id: 'whatsapp', nome: 'WhatsApp', icon: MessageSquare },
+    { id: 'sms', nome: 'SMS', icon: Smartphone },
+    { id: 'push', nome: 'Push', icon: Bell },
+    { id: 'dashboard', nome: 'Dashboard', icon: BarChart3 }
   ];
 
   const frequencias = [
-    { value: 'tempo_real', label: 'Tempo Real' },
-    { value: 'diario', label: 'Diário' },
-    { value: 'semanal', label: 'Semanal' },
-    { value: 'mensal', label: 'Mensal' },
-    { value: 'personalizado', label: 'Personalizado' }
+    { value: 'tempo_real', label: 'Tempo Real', icon: Clock },
+    { value: 'diario', label: 'Diário', icon: Calendar },
+    { value: 'semanal', label: 'Semanal', icon: Calendar },
+    { value: 'mensal', label: 'Mensal', icon: Calendar }
+  ];
+
+  const prioridades = [
+    { value: 'baixa', label: 'Baixa' },
+    { value: 'media', label: 'Média' },
+    { value: 'alta', label: 'Alta' },
+    { value: 'critica', label: 'Crítica' }
   ];
 
   // Estatísticas de automações
@@ -123,69 +144,126 @@ export default function Automacoes() {
     economia: 0
   });
 
-  useEffect(() => {
-    loadAutomacoes();
-    loadStats();
-  }, []);
-
   const loadAutomacoes = async () => {
     try {
       setLoading(true);
-      const automacoesQuery = query(
-        collection(db, 'automacoes'),
-        orderBy('createdAt', 'desc')
-      );
-      const snapshot = await getDocs(automacoesQuery);
-      const automacoesData = snapshot.docs.map(doc => ({
+      const automacaoCollection = collection(db, 'automacoes');
+      const q = query(automacaoCollection, orderBy('createdAt', 'desc'));
+      const querySnapshot = await getDocs(q);
+      
+      const automacoesList = querySnapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       }));
-      setAutomacoes(automacoesData);
+      
+      setAutomacoes(automacoesList);
+      
+      // Calcular estatísticas
+      setStats({
+        totalAutomacoes: automacoesList.length,
+        ativas: automacoesList.filter(a => a.ativo).length,
+        executadas: automacoesList.reduce((acc, a) => acc + (a.execucoes || 0), 0),
+        economia: 75
+      });
+      
     } catch (error) {
       console.error('Erro ao carregar automações:', error);
       toast.error('Erro ao carregar automações');
+      
+      // Fallback para dados de exemplo
+      setAutomacoes(exemploAutomacoes);
+      setStats({
+        totalAutomacoes: exemploAutomacoes.length,
+        ativas: exemploAutomacoes.filter(a => a.ativo).length,
+        executadas: exemploAutomacoes.reduce((acc, a) => acc + a.execucoes, 0),
+        economia: 75
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const loadStats = async () => {
-    // Simular estatísticas (implementar lógica real depois)
-    setStats({
-      totalAutomacoes: automacoes.length,
-      ativas: automacoes.filter(a => a.ativo).length,
-      executadas: 1247,
-      economia: 85
-    });
-  };
+  useEffect(() => {
+    loadAutomacoes();
+  }, []);
+
+  // Dados de exemplo para demonstração (fallback)
+  const exemploAutomacoes = [
+    {
+      id: '1',
+      nome: 'Alerta Estoque Baixo',
+      tipo: 'alerta_estoque',
+      descricao: 'Monitora produtos com estoque abaixo de 5 unidades',
+      ativo: true,
+      frequencia: 'tempo_real',
+      execucoes: 45,
+      ultimaExecucao: new Date().toLocaleDateString(),
+      prioridade: 'alta',
+      economia: 25
+    },
+    {
+      id: '2',
+      nome: 'Relatório Vendas Diário',
+      tipo: 'meta_vendas',
+      descricao: 'Envia relatório automático de vendas às 18h',
+      ativo: true,
+      frequencia: 'diario',
+      execucoes: 127,
+      ultimaExecucao: new Date().toLocaleDateString(),
+      prioridade: 'media',
+      economia: 15
+    },
+    {
+      id: '3',
+      nome: 'Reativação Cliente 90 dias',
+      tipo: 'cliente_inativo',
+      descricao: 'Identifica clientes inativos há mais de 90 dias',
+      ativo: false,
+      frequencia: 'semanal',
+      execucoes: 23,
+      ultimaExecucao: '15/12/2024',
+      prioridade: 'media',
+      economia: 35
+    }
+  ];
+
+  const filteredAutomacoes = automacoes.filter(automacao => {
+    const matchesSearch = automacao.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         automacao.descricao.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = filtroStatus === 'todos' || 
+                         (filtroStatus === 'ativas' && automacao.ativo) ||
+                         (filtroStatus === 'inativas' && !automacao.ativo);
+    return matchesSearch && matchesStatus;
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     try {
-      const automacaoData = {
-        ...formData,
-        createdAt: Timestamp.now(),
-        updatedAt: Timestamp.now(),
-        execucoes: 0,
-        ultimaExecucao: null
-      };
-
       if (editingAutomacao) {
-        await updateDoc(doc(db, 'automacoes', editingAutomacao.id), {
-          ...automacaoData,
+        // Atualizar automação existente
+        const automacaoRef = doc(db, 'automacoes', editingAutomacao.id);
+        await updateDoc(automacaoRef, {
+          ...formData,
           updatedAt: Timestamp.now()
         });
         toast.success('Automação atualizada com sucesso!');
       } else {
-        await addDoc(collection(db, 'automacoes'), automacaoData);
+        // Criar nova automação
+        await addDoc(collection(db, 'automacoes'), {
+          ...formData,
+          createdAt: Timestamp.now(),
+          execucoes: 0,
+          ultimaExecucao: null,
+          economia: Math.floor(Math.random() * 50) + 10 // Economia simulada
+        });
         toast.success('Automação criada com sucesso!');
       }
 
       setShowCreateModal(false);
       setEditingAutomacao(null);
       resetForm();
-      loadAutomacoes();
+      loadAutomacoes(); // Recarregar lista
       
     } catch (error) {
       console.error('Erro ao salvar automação:', error);
@@ -193,15 +271,19 @@ export default function Automacoes() {
     }
   };
 
-  const toggleAutomacao = async (id, ativo) => {
+  const toggleAutomacao = async (id) => {
     try {
-      await updateDoc(doc(db, 'automacoes', id), {
-        ativo: !ativo,
+      const automacao = automacoes.find(a => a.id === id);
+      const automacaoRef = doc(db, 'automacoes', id);
+      
+      await updateDoc(automacaoRef, {
+        ativo: !automacao.ativo,
         updatedAt: Timestamp.now()
       });
       
-      toast.success(`Automação ${!ativo ? 'ativada' : 'desativada'} com sucesso!`);
-      loadAutomacoes();
+      toast.success(`Automação ${!automacao.ativo ? 'ativada' : 'desativada'}!`);
+      loadAutomacoes(); // Recarregar lista
+      
     } catch (error) {
       console.error('Erro ao alterar status:', error);
       toast.error('Erro ao alterar status da automação');
@@ -209,15 +291,15 @@ export default function Automacoes() {
   };
 
   const deleteAutomacao = async (id) => {
-    if (!confirm('Tem certeza que deseja excluir esta automação?')) return;
-    
-    try {
-      await deleteDoc(doc(db, 'automacoes', id));
-      toast.success('Automação excluída com sucesso!');
-      loadAutomacoes();
-    } catch (error) {
-      console.error('Erro ao excluir automação:', error);
-      toast.error('Erro ao excluir automação');
+    if (window.confirm('Tem certeza que deseja excluir esta automação?')) {
+      try {
+        await deleteDoc(doc(db, 'automacoes', id));
+        toast.success('Automação excluída com sucesso!');
+        loadAutomacoes(); // Recarregar lista
+      } catch (error) {
+        console.error('Erro ao excluir automação:', error);
+        toast.error('Erro ao excluir automação');
+      }
     }
   };
 
@@ -225,617 +307,482 @@ export default function Automacoes() {
     setFormData({
       nome: '',
       tipo: 'alerta_estoque',
-      condicoes: {},
-      acoes: [],
+      descricao: '',
+      condicoes: {
+        valorLimite: 5,
+        operador: 'menor_igual',
+        campo: 'estoque'
+      },
+      acoes: ['notificacao_sistema'],
       ativo: true,
-      frequencia: 'tempo_real'
+      frequencia: 'tempo_real',
+      canaisNotificacao: ['dashboard'],
+      prioridade: 'media'
     });
   };
 
   const executarTeste = async (automacao) => {
+    toast.loading('Executando teste da automação...', { duration: 2000 });
+    
     try {
-      // Simular execução de teste
-      toast.loading('Executando teste da automação...', { duration: 2000 });
+      // Simular execução e atualizar no Firebase
+      const automacaoRef = doc(db, 'automacoes', automacao.id);
+      await updateDoc(automacaoRef, {
+        execucoes: (automacao.execucoes || 0) + 1,
+        ultimaExecucao: Timestamp.now(),
+        updatedAt: Timestamp.now()
+      });
       
       setTimeout(() => {
-        toast.success('✅ Teste executado com sucesso!');
-        
-        // Simular diferentes tipos de teste
-        if (automacao.tipo === 'alerta_estoque') {
-          toast.info('📦 3 produtos com estoque baixo detectados');
-        } else if (automacao.tipo === 'meta_vendas') {
-          toast.info('🎯 Meta atual: 78% concluída');
-        } else if (automacao.tipo === 'cliente_inativo') {
-          toast.info('👥 12 clientes inativos identificados');
-        }
+        toast.success('Teste executado com sucesso! ✅');
+        loadAutomacoes(); // Recarregar lista
       }, 2000);
       
     } catch (error) {
+      console.error('Erro ao executar teste:', error);
       toast.error('Erro ao executar teste');
     }
   };
 
-  const automacoesPreConfiguradas = [
-    {
-      nome: 'Alerta de Estoque Crítico',
-      tipo: 'alerta_estoque',
-      descricao: 'Notifica quando produtos têm menos de 5 unidades',
-      condicoes: { limite: 5 },
-      acoes: ['email', 'push'],
-      icon: '📦',
-      categoria: 'Estoque'
-    },
-    {
-      nome: 'Relatório de Vendas Diário',
-      tipo: 'relatorio_diario',
-      descricao: 'Envia resumo de vendas todos os dias às 18h',
-      condicoes: { horario: '18:00' },
-      acoes: ['email'],
-      icon: '📊',
-      categoria: 'Relatórios'
-    },
-    {
-      nome: 'Follow-up de Clientes',
-      tipo: 'cliente_inativo',
-      descricao: 'Contata clientes inativos há mais de 30 dias',
-      condicoes: { diasInativo: 30 },
-      acoes: ['whatsapp', 'email'],
-      icon: '🤝',
-      categoria: 'CRM'
-    },
-    {
-      nome: 'Backup Semanal',
-      tipo: 'backup_automatico',
-      descricao: 'Backup completo dos dados toda segunda-feira',
-      condicoes: { diaSemana: 1 },
-      acoes: ['cloud'],
-      icon: '☁️',
-      categoria: 'Segurança'
-    }
-  ];
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <motion.div
-            className="w-16 h-16 border-4 border-[#FF2C68]/30 border-t-[#FF2C68] rounded-full mx-auto mb-4"
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          />
-          <p className="text-white/60">Carregando automações...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <motion.div
-      className="space-y-8"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.6 }}
-    >
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6"
-      >
-        <div>
-          <h1 className="text-4xl font-bold text-white mb-2">
-            🤖 Central de Automações
-          </h1>
-          <p className="text-white/60">
-            Automatize processos e economize tempo com inteligência artificial
-          </p>
-        </div>
-        
-        <div className="flex items-center space-x-4">
-          <motion.button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center space-x-2 px-6 py-3 bg-gradient-to-r from-[#FF2C68] to-[#FF2C68]/80 rounded-xl text-white font-semibold hover:scale-105 transition-transform"
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <Plus className="w-5 h-5" />
-            <span>Nova Automação</span>
-          </motion.button>
-          
-          <button
-            onClick={loadAutomacoes}
-            className="flex items-center space-x-2 px-4 py-3 bg-blue-500/20 border border-blue-500/30 rounded-xl text-blue-400 hover:bg-blue-500/30 transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span>Atualizar</span>
-          </button>
-        </div>
-      </motion.div>
-
-      {/* Tabs */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="flex space-x-1 bg-[#0D0C0C]/50 p-1 rounded-2xl border border-[#FF2C68]/20"
-      >
-        {[
-          { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-          { id: 'automacoes', label: 'Automações', icon: Bot },
-          { id: 'templates', label: 'Templates', icon: Workflow },
-          { id: 'configuracoes', label: 'Configurações', icon: Settings }
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center space-x-2 px-6 py-3 rounded-xl font-medium transition-all duration-300 ${
-              activeTab === tab.id
-                ? 'bg-[#FF2C68] text-white'
-                : 'text-white/60 hover:text-white hover:bg-white/10'
-            }`}
-          >
-            <tab.icon className="w-4 h-4" />
-            <span>{tab.label}</span>
-          </button>
-        ))}
-      </motion.div>
-
-      {/* Dashboard Tab */}
-      {activeTab === 'dashboard' && (
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="space-y-8"
-        >
-          {/* Estatísticas */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              {
-                title: 'Total de Automações',
-                value: stats.totalAutomacoes,
-                icon: Bot,
-                color: 'blue',
-                change: '+3 este mês'
-              },
-              {
-                title: 'Automações Ativas',
-                value: stats.ativas,
-                icon: Zap,
-                color: 'green',
-                change: `${Math.round((stats.ativas / stats.totalAutomacoes) * 100) || 0}% ativas`
-              },
-              {
-                title: 'Execuções Today',
-                value: '47',
-                icon: Play,
-                color: 'purple',
-                change: '+12% vs ontem'
-              },
-              {
-                title: 'Tempo Economizado',
-                value: `${stats.economia}h`,
-                icon: Clock,
-                color: 'orange',
-                change: 'este mês'
-              }
-            ].map((stat, index) => (
-              <motion.div
-                key={stat.title}
-                className={`bg-gradient-to-br from-${stat.color}-500/10 to-${stat.color}-600/10 backdrop-blur-xl border border-${stat.color}-500/20 rounded-2xl p-6`}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: index * 0.1 }}
-                whileHover={{ scale: 1.02, y: -5 }}
-              >
-                <div className="flex items-center justify-between mb-4">
-                  <div className={`w-12 h-12 bg-${stat.color}-500/20 rounded-xl flex items-center justify-center`}>
-                    <stat.icon className={`w-6 h-6 text-${stat.color}-400`} />
+    <div className="space-y-8">
+      {/* Header Profissional */}
+      <div className="relative">
+        <div className="absolute inset-0 bg-gradient-to-r from-[#FF2C68]/10 via-purple-500/10 to-pink-500/10 blur-3xl"></div>
+        <div className="relative bg-black/40 backdrop-blur-xl rounded-3xl border border-white/10 p-8">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-6">
+              <div className="w-20 h-20 bg-gradient-to-br from-[#FF2C68] to-pink-600 rounded-3xl flex items-center justify-center shadow-2xl">
+                <Bot className="w-10 h-10 text-white" />
+              </div>
+              <div>
+                <h1 className="text-4xl font-bold bg-gradient-to-r from-white via-gray-200 to-white bg-clip-text text-transparent">
+                  🤖 Automações Inteligentes
+                </h1>
+                <p className="text-gray-400 text-lg mt-1">
+                  Sistema avançado de automação para otimizar processos
+                </p>
+                <div className="flex items-center space-x-4 mt-2">
+                  <div className="flex items-center space-x-2 text-green-400">
+                    <CheckCircle className="w-4 h-4" />
+                    <span className="text-sm">{stats.ativas} Ativas</span>
                   </div>
-                  <span className={`text-${stat.color}-400 text-sm font-medium`}>
-                    {stat.change}
-                  </span>
+                  <div className="flex items-center space-x-2 text-blue-400">
+                    <Activity className="w-4 h-4" />
+                    <span className="text-sm">{stats.executadas} Execuções</span>
+                  </div>
+                  <div className="flex items-center space-x-2 text-[#FF2C68]">
+                    <TrendingUp className="w-4 h-4" />
+                    <span className="text-sm">{stats.economia}% Economia</span>
+                  </div>
                 </div>
-                <p className={`text-${stat.color}-400 text-sm font-medium mb-1`}>{stat.title}</p>
-                <p className="text-3xl font-bold text-white">{stat.value}</p>
-              </motion.div>
-            ))}
-          </div>
-
-          {/* Execuções Recentes */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="bg-[#0D0C0C]/50 backdrop-blur-xl border border-[#FF2C68]/20 rounded-2xl p-6"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-white">Execuções Recentes</h3>
-              <Activity className="w-6 h-6 text-[#FF2C68]" />
+              </div>
             </div>
             
-            <div className="space-y-4">
-              {[
-                {
-                  nome: 'Alerta de Estoque Crítico',
-                  status: 'sucesso',
-                  tempo: '2 min atrás',
-                  resultado: '3 produtos alertados'
-                },
-                {
-                  nome: 'Relatório Diário de Vendas',
-                  status: 'sucesso',
-                  tempo: '1 hora atrás',
-                  resultado: 'Email enviado para 5 usuários'
-                },
-                {
-                  nome: 'Backup Automático',
-                  status: 'executando',
-                  tempo: 'Em andamento',
-                  resultado: '75% concluído'
-                },
-                {
-                  nome: 'Follow-up de Clientes',
-                  status: 'sucesso',
-                  tempo: '3 horas atrás',
-                  resultado: '12 mensagens enviadas'
-                }
-              ].map((execucao, index) => (
-                <motion.div
-                  key={index}
-                  className="flex items-center justify-between p-4 bg-[#0D0C0C]/30 rounded-xl"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 + index * 0.1 }}
-                >
-                  <div className="flex items-center space-x-4">
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                      execucao.status === 'sucesso' ? 'bg-green-500/20' :
-                      execucao.status === 'executando' ? 'bg-blue-500/20' : 'bg-red-500/20'
-                    }`}>
-                      {execucao.status === 'sucesso' ? (
-                        <CheckCircle className={`w-5 h-5 text-green-400`} />
-                      ) : execucao.status === 'executando' ? (
-                        <Clock className={`w-5 h-5 text-blue-400`} />
-                      ) : (
-                        <AlertTriangle className={`w-5 h-5 text-red-400`} />
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-white font-medium">{execucao.nome}</p>
-                      <p className="text-white/60 text-sm">{execucao.resultado}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className={`text-sm font-medium ${
-                      execucao.status === 'sucesso' ? 'text-green-400' :
-                      execucao.status === 'executando' ? 'text-blue-400' : 'text-red-400'
-                    }`}>
-                      {execucao.status === 'sucesso' ? 'Sucesso' :
-                       execucao.status === 'executando' ? 'Executando' : 'Erro'}
-                    </p>
-                    <p className="text-white/60 text-xs">{execucao.tempo}</p>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="group px-8 py-4 bg-gradient-to-r from-[#FF2C68] to-pink-600 rounded-2xl text-white font-bold hover:from-[#FF2C68]/80 hover:to-pink-600/80 transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-[#FF2C68]/25 flex items-center space-x-3"
+            >
+              <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform" />
+              <span>Nova Automação</span>
+            </button>
+          </div>
+        </div>
+      </div>
 
-      {/* Automações Tab */}
-      {activeTab === 'automacoes' && (
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="space-y-6"
-        >
-          {automacoes.length > 0 ? (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {automacoes.map((automacao, index) => {
-                const tipoInfo = tiposAutomacao.find(t => t.id === automacao.tipo);
-                
-                return (
-                  <motion.div
-                    key={automacao.id}
-                    className={`bg-[#0D0C0C]/50 backdrop-blur-xl border rounded-2xl p-6 ${
-                      automacao.ativo ? 'border-green-500/20' : 'border-gray-500/20'
-                    }`}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.1 }}
-                    whileHover={{ scale: 1.01 }}
-                  >
-                    <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-12 h-12 bg-${tipoInfo?.color || 'gray'}-500/20 rounded-xl flex items-center justify-center`}>
-                          {tipoInfo?.icon && <tipoInfo.icon className={`w-6 h-6 text-${tipoInfo.color}-400`} />}
-                        </div>
-                        <div>
-                          <h3 className="text-white font-bold">{automacao.nome}</h3>
-                          <p className="text-white/60 text-sm">{tipoInfo?.nome}</p>
-                        </div>
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6 hover:border-white/20 transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-400 text-sm font-medium">Total Automações</p>
+              <p className="text-3xl font-bold text-white">{stats.totalAutomacoes}</p>
+            </div>
+            <div className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center">
+              <Workflow className="w-6 h-6 text-white" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6 hover:border-green-500/30 transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-400 text-sm font-medium">Automações Ativas</p>
+              <p className="text-3xl font-bold text-green-400">{stats.ativas}</p>
+            </div>
+            <div className="w-12 h-12 bg-green-500/20 rounded-xl flex items-center justify-center">
+              <CheckCircle className="w-6 h-6 text-green-400" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6 hover:border-blue-500/30 transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-400 text-sm font-medium">Execuções</p>
+              <p className="text-3xl font-bold text-blue-400">{stats.executadas}</p>
+            </div>
+            <div className="w-12 h-12 bg-blue-500/20 rounded-xl flex items-center justify-center">
+              <Activity className="w-6 h-6 text-blue-400" />
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6 hover:border-[#FF2C68]/30 transition-all">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-gray-400 text-sm font-medium">Economia de Tempo</p>
+              <p className="text-3xl font-bold text-[#FF2C68]">{stats.economia}%</p>
+            </div>
+            <div className="w-12 h-12 bg-[#FF2C68]/20 rounded-xl flex items-center justify-center">
+              <TrendingUp className="w-6 h-6 text-[#FF2C68]" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Barra de Busca e Filtros */}
+      <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 p-6">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 w-5 h-5 text-white/40" />
+            <input
+              type="text"
+              placeholder="Buscar automações..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-12 pr-4 py-3 bg-black/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:border-[#FF2C68] focus:ring-1 focus:ring-[#FF2C68]/30 focus:outline-none transition-all"
+            />
+          </div>
+          
+          <div className="flex items-center space-x-3">
+            <Filter className="w-5 h-5 text-white/60" />
+            <select
+              value={filtroStatus}
+              onChange={(e) => setFiltroStatus(e.target.value)}
+              className="px-4 py-3 bg-black/50 border border-gray-600 rounded-xl text-white focus:border-[#FF2C68] focus:ring-1 focus:ring-[#FF2C68]/30 focus:outline-none"
+            >
+              <option value="todos">Todas</option>
+              <option value="ativas">Ativas</option>
+              <option value="inativas">Inativas</option>
+            </select>
+            
+            <button
+              onClick={loadAutomacoes}
+              disabled={loading}
+              className="px-4 py-3 bg-black/50 text-gray-300 rounded-xl hover:bg-gray-700 transition-colors border border-gray-600 flex items-center space-x-2 disabled:opacity-50"
+              title="Atualizar lista"
+            >
+              <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Lista de Automações */}
+      <div className="bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 overflow-hidden">
+        <div className="p-6 border-b border-white/10">
+          <h2 className="text-2xl font-bold text-white">🔧 Suas Automações</h2>
+          <p className="text-gray-400 mt-1">{filteredAutomacoes.length} automações encontradas</p>
+        </div>
+        
+        <div className="p-6">
+          <div className="grid gap-6">
+            {filteredAutomacoes.map((automacao) => {
+              const tipoInfo = tiposAutomacao.find(t => t.id === automacao.tipo);
+              const IconComponent = tipoInfo?.icon || Bot;
+              
+              return (
+                <div
+                  key={automacao.id}
+                  className={`group bg-black/30 rounded-2xl p-6 border transition-all duration-200 hover:scale-[1.02] ${
+                    automacao.ativo 
+                      ? 'border-green-500/30 hover:border-green-500/50' 
+                      : 'border-gray-600/50 hover:border-gray-500/50'
+                  }`}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start space-x-4">
+                                              <div className={`w-16 h-16 bg-gradient-to-br ${
+                          automacao.tipo === 'alerta_estoque' ? 'from-orange-500 to-orange-600' :
+                          automacao.tipo === 'meta_vendas' ? 'from-green-500 to-green-600' :
+                          automacao.tipo === 'cliente_inativo' ? 'from-blue-500 to-blue-600' :
+                          automacao.tipo === 'backup_automatico' ? 'from-purple-500 to-purple-600' :
+                          automacao.tipo === 'relatorio_financeiro' ? 'from-cyan-500 to-cyan-600' :
+                          automacao.tipo === 'aniversario_cliente' ? 'from-pink-500 to-pink-600' :
+                          'from-gray-500 to-gray-600'
+                        } rounded-2xl flex items-center justify-center shadow-lg`}>
+                        <IconComponent className="w-8 h-8 text-white" />
                       </div>
                       
-                      <div className="flex items-center space-x-2">
-                        <button
-                          onClick={() => toggleAutomacao(automacao.id, automacao.ativo)}
-                          className={`p-2 rounded-lg transition-colors ${
+                      <div className="flex-1">
+                        <div className="flex items-center space-x-3 mb-2">
+                          <h3 className="text-xl font-bold text-white group-hover:text-[#FF2C68] transition-colors">
+                            {automacao.nome}
+                          </h3>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
                             automacao.ativo 
-                              ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' 
-                              : 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/30'
-                          }`}
-                        >
-                          {automacao.ativo ? <Play className="w-4 h-4" /> : <Pause className="w-4 h-4" />}
-                        </button>
+                              ? 'bg-green-500/20 text-green-400 border border-green-500/30' 
+                              : 'bg-gray-500/20 text-gray-400 border border-gray-500/30'
+                          }`}>
+                            {automacao.ativo ? 'Ativa' : 'Inativa'}
+                          </span>
+                          <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                            automacao.prioridade === 'critica' ? 'bg-red-500/20 text-red-400' :
+                            automacao.prioridade === 'alta' ? 'bg-orange-500/20 text-orange-400' :
+                            automacao.prioridade === 'media' ? 'bg-yellow-500/20 text-yellow-400' :
+                            'bg-green-500/20 text-green-400'
+                          }`}>
+                            {prioridades.find(p => p.value === automacao.prioridade)?.label || 'Média'}
+                          </span>
+                        </div>
                         
-                        <button
-                          onClick={() => executarTeste(automacao)}
-                          className="p-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-colors"
-                        >
-                          <Zap className="w-4 h-4" />
-                        </button>
+                        <p className="text-gray-400 mb-4">{automacao.descricao}</p>
                         
-                        <button
-                          onClick={() => {
-                            setEditingAutomacao(automacao);
-                            setFormData(automacao);
-                            setShowCreateModal(true);
-                          }}
-                          className="p-2 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-colors"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        
-                        <button
-                          onClick={() => deleteAutomacao(automacao.id)}
-                          className="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <div className="bg-black/50 rounded-xl p-3">
+                            <div className="flex items-center space-x-2 text-blue-400 mb-1">
+                              <Clock className="w-4 h-4" />
+                              <span className="text-xs font-medium">Frequência</span>
+                            </div>
+                            <p className="text-white font-bold">
+                              {frequencias.find(f => f.value === automacao.frequencia)?.label || 'Tempo Real'}
+                            </p>
+                          </div>
+                          
+                          <div className="bg-black/50 rounded-xl p-3">
+                            <div className="flex items-center space-x-2 text-green-400 mb-1">
+                              <Activity className="w-4 h-4" />
+                              <span className="text-xs font-medium">Execuções</span>
+                            </div>
+                            <p className="text-white font-bold">{automacao.execucoes || 0}</p>
+                          </div>
+                          
+                          <div className="bg-black/50 rounded-xl p-3">
+                            <div className="flex items-center space-x-2 text-purple-400 mb-1">
+                              <Calendar className="w-4 h-4" />
+                              <span className="text-xs font-medium">Última Execução</span>
+                            </div>
+                            <p className="text-white font-bold text-sm">
+                              {automacao.ultimaExecucao ? 
+                                new Date(automacao.ultimaExecucao.toDate()).toLocaleDateString() : 
+                                'Nunca'
+                              }
+                            </p>
+                          </div>
+                          
+                          <div className="bg-black/50 rounded-xl p-3">
+                            <div className="flex items-center space-x-2 text-[#FF2C68] mb-1">
+                              <TrendingUp className="w-4 h-4" />
+                              <span className="text-xs font-medium">Economia</span>
+                            </div>
+                            <p className="text-white font-bold">{automacao.economia || 25}%</p>
+                          </div>
+                        </div>
                       </div>
                     </div>
                     
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-white/60 text-sm">Status:</span>
-                        <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                    <div className="flex items-center space-x-2">
+                      <button
+                        onClick={() => executarTeste(automacao)}
+                        className="p-3 bg-blue-500/20 text-blue-400 rounded-xl hover:bg-blue-500/30 transition-colors"
+                        title="Executar Teste"
+                      >
+                        <Play className="w-5 h-5" />
+                      </button>
+                      
+                      <button
+                        onClick={() => toggleAutomacao(automacao.id)}
+                        className={`p-3 rounded-xl transition-colors ${
                           automacao.ativo 
-                            ? 'bg-green-500/20 text-green-400' 
-                            : 'bg-gray-500/20 text-gray-400'
-                        }`}>
-                          {automacao.ativo ? 'Ativa' : 'Inativa'}
-                        </span>
-                      </div>
+                            ? 'bg-green-500/20 text-green-400 hover:bg-green-500/30' 
+                            : 'bg-gray-500/20 text-gray-400 hover:bg-gray-500/30'
+                        }`}
+                        title={automacao.ativo ? 'Desativar' : 'Ativar'}
+                      >
+                        {automacao.ativo ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                      </button>
                       
-                      <div className="flex items-center justify-between">
-                        <span className="text-white/60 text-sm">Frequência:</span>
-                        <span className="text-white text-sm">
-                          {frequencias.find(f => f.value === automacao.frequencia)?.label}
-                        </span>
-                      </div>
+                      <button
+                        onClick={() => {
+                          setEditingAutomacao(automacao);
+                          setFormData(automacao);
+                          setShowCreateModal(true);
+                        }}
+                        className="p-3 bg-[#FF2C68]/20 text-[#FF2C68] rounded-xl hover:bg-[#FF2C68]/30 transition-colors"
+                        title="Editar"
+                      >
+                        <Edit className="w-5 h-5" />
+                      </button>
                       
-                      <div className="flex items-center justify-between">
-                        <span className="text-white/60 text-sm">Execuções:</span>
-                        <span className="text-white text-sm">{automacao.execucoes || 0}</span>
-                      </div>
+                      <button
+                        onClick={() => deleteAutomacao(automacao.id)}
+                        className="p-3 bg-red-500/20 text-red-400 rounded-xl hover:bg-red-500/30 transition-colors"
+                        title="Excluir"
+                      >
+                        <Trash2 className="w-5 h-5" />
+                      </button>
                     </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-center py-12"
-            >
-              <Bot className="w-16 h-16 text-white/30 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-white mb-2">Nenhuma automação configurada</h3>
-              <p className="text-white/60 mb-6">Crie sua primeira automação para começar a economizar tempo</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          
+          {filteredAutomacoes.length === 0 && (
+            <div className="text-center py-16">
+              <div className="w-24 h-24 bg-gray-500/20 rounded-3xl flex items-center justify-center mx-auto mb-6">
+                <Bot className="w-12 h-12 text-gray-400" />
+              </div>
+              <h3 className="text-white font-bold text-xl mb-2">Nenhuma automação encontrada</h3>
+              <p className="text-gray-400 mb-6">
+                {searchTerm ? `Nenhum resultado para "${searchTerm}"` : 'Crie sua primeira automação para começar'}
+              </p>
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="bg-[#FF2C68] text-white px-6 py-3 rounded-xl font-semibold hover:bg-[#FF2C68]/80 transition-colors"
+                className="px-6 py-3 bg-[#FF2C68]/20 text-[#FF2C68] rounded-xl hover:bg-[#FF2C68]/30 transition-colors"
               >
                 Criar Primeira Automação
               </button>
-            </motion.div>
+            </div>
           )}
-        </motion.div>
-      )}
-
-      {/* Templates Tab */}
-      {activeTab === 'templates' && (
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="space-y-6"
-        >
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {automacoesPreConfiguradas.map((template, index) => (
-              <motion.div
-                key={index}
-                className="bg-[#0D0C0C]/50 backdrop-blur-xl border border-[#FF2C68]/20 rounded-2xl p-6"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.1 }}
-                whileHover={{ scale: 1.02 }}
-              >
-                <div className="flex items-start space-x-4 mb-4">
-                  <div className="text-4xl">{template.icon}</div>
-                  <div className="flex-1">
-                    <h3 className="text-white font-bold text-lg">{template.nome}</h3>
-                    <p className="text-white/60 text-sm mb-2">{template.descricao}</p>
-                    <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded-lg text-xs">
-                      {template.categoria}
-                    </span>
-                  </div>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex space-x-2">
-                    {template.acoes.map((acao, actionIndex) => {
-                      const canal = canaisNotificacao.find(c => c.id === acao);
-                      return canal ? (
-                        <div
-                          key={actionIndex}
-                          className={`p-2 bg-${canal.color}-500/20 rounded-lg`}
-                          title={canal.nome}
-                        >
-                          <canal.icon className={`w-4 h-4 text-${canal.color}-400`} />
-                        </div>
-                      ) : null;
-                    })}
-                  </div>
-                  
-                  <button
-                    onClick={() => {
-                      setFormData({
-                        nome: template.nome,
-                        tipo: template.tipo,
-                        condicoes: template.condicoes,
-                        acoes: template.acoes,
-                        ativo: true,
-                        frequencia: 'tempo_real'
-                      });
-                      setShowCreateModal(true);
-                    }}
-                    className="bg-[#FF2C68] text-white px-4 py-2 rounded-lg font-medium hover:bg-[#FF2C68]/80 transition-colors"
-                  >
-                    Usar Template
-                  </button>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-      )}
+        </div>
+      </div>
 
       {/* Modal de Criação/Edição */}
-      <AnimatePresence>
-        {showCreateModal && (
-          <motion.div
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => {
-              setShowCreateModal(false);
-              setEditingAutomacao(null);
-              resetForm();
-            }}
-          >
-            <motion.div
-              className="bg-[#0D0C0C] border border-[#FF2C68]/30 rounded-2xl p-8 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-bold text-white">
-                  {editingAutomacao ? 'Editar Automação' : 'Nova Automação'}
-                </h3>
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-black/90 backdrop-blur-xl rounded-3xl border border-white/20 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-8">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center space-x-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-[#FF2C68] to-pink-600 rounded-2xl flex items-center justify-center">
+                    <Bot className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-bold text-white">
+                      {editingAutomacao ? 'Editar Automação' : 'Nova Automação'}
+                    </h2>
+                    <p className="text-gray-400">Configure sua automação inteligente</p>
+                  </div>
+                </div>
                 <button
                   onClick={() => {
                     setShowCreateModal(false);
                     setEditingAutomacao(null);
                     resetForm();
                   }}
-                  className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center text-red-400 hover:bg-red-500/30 transition-colors"
+                  className="p-3 bg-red-500/20 text-red-400 rounded-xl hover:bg-red-500/30 transition-colors"
                 >
-                  <X className="w-4 h-4" />
+                  <X className="w-6 h-6" />
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Nome */}
-                <div>
-                  <label className="block text-white font-medium mb-2">Nome da Automação</label>
-                  <input
-                    type="text"
-                    value={formData.nome}
-                    onChange={(e) => setFormData({...formData, nome: e.target.value})}
-                    className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none"
-                    placeholder="Ex: Alerta de Estoque Baixo"
-                    required
-                  />
-                </div>
-
-                {/* Tipo */}
-                <div>
-                  <label className="block text-white font-medium mb-2">Tipo de Automação</label>
-                  <select
-                    value={formData.tipo}
-                    onChange={(e) => setFormData({...formData, tipo: e.target.value})}
-                    className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white focus:border-[#FF2C68] focus:outline-none"
-                  >
-                    {tiposAutomacao.map(tipo => (
-                      <option key={tipo.id} value={tipo.id}>{tipo.nome}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Frequência */}
-                <div>
-                  <label className="block text-white font-medium mb-2">Frequência</label>
-                  <select
-                    value={formData.frequencia}
-                    onChange={(e) => setFormData({...formData, frequencia: e.target.value})}
-                    className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white focus:border-[#FF2C68] focus:outline-none"
-                  >
-                    {frequencias.map(freq => (
-                      <option key={freq.value} value={freq.value}>{freq.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* Canais de Notificação */}
-                <div>
-                  <label className="block text-white font-medium mb-2">Canais de Notificação</label>
-                  <div className="grid grid-cols-2 gap-3">
-                    {canaisNotificacao.map(canal => (
-                      <label
-                        key={canal.id}
-                        className={`flex items-center space-x-3 p-3 border rounded-xl cursor-pointer transition-colors ${
-                          formData.acoes?.includes(canal.id)
-                            ? `border-${canal.color}-500 bg-${canal.color}-500/10`
-                            : 'border-white/20 hover:border-white/40'
-                        }`}
+              <form onSubmit={handleSubmit} className="space-y-8">
+                {/* Informações Básicas */}
+                <div className="bg-black/30 rounded-2xl border border-white/10 p-6">
+                  <h3 className="text-xl font-bold text-white mb-6">📋 Informações Básicas</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-white font-medium mb-2">Nome da Automação</label>
+                      <input
+                        type="text"
+                        value={formData.nome}
+                        onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                        className="w-full px-4 py-3 bg-black/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:border-[#FF2C68] focus:ring-1 focus:ring-[#FF2C68]/30 focus:outline-none"
+                        placeholder="Ex: Alerta de Estoque Baixo"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label className="block text-white font-medium mb-2">Tipo de Automação</label>
+                      <select
+                        value={formData.tipo}
+                        onChange={(e) => setFormData({ ...formData, tipo: e.target.value })}
+                        className="w-full px-4 py-3 bg-black/50 border border-gray-600 rounded-xl text-white focus:border-[#FF2C68] focus:ring-1 focus:ring-[#FF2C68]/30 focus:outline-none"
                       >
-                        <input
-                          type="checkbox"
-                          checked={formData.acoes?.includes(canal.id) || false}
-                          onChange={(e) => {
-                            const newAcoes = e.target.checked
-                              ? [...(formData.acoes || []), canal.id]
-                              : (formData.acoes || []).filter(a => a !== canal.id);
-                            setFormData({...formData, acoes: newAcoes});
-                          }}
-                          className="hidden"
-                        />
-                        <canal.icon className={`w-5 h-5 text-${canal.color}-400`} />
-                        <span className="text-white">{canal.nome}</span>
-                      </label>
-                    ))}
+                        {tiposAutomacao.map(tipo => (
+                          <option key={tipo.id} value={tipo.id}>{tipo.nome}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6">
+                    <label className="block text-white font-medium mb-2">Descrição</label>
+                    <textarea
+                      value={formData.descricao}
+                      onChange={(e) => setFormData({ ...formData, descricao: e.target.value })}
+                      className="w-full px-4 py-3 bg-black/50 border border-gray-600 rounded-xl text-white placeholder-gray-400 focus:border-[#FF2C68] focus:ring-1 focus:ring-[#FF2C68]/30 focus:outline-none"
+                      placeholder="Descreva o que esta automação fará..."
+                      rows="3"
+                    />
                   </div>
                 </div>
 
-                {/* Status */}
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="checkbox"
-                    id="ativo"
-                    checked={formData.ativo}
-                    onChange={(e) => setFormData({...formData, ativo: e.target.checked})}
-                    className="w-5 h-5 text-[#FF2C68] bg-[#0D0C0C] border-[#FF2C68]/30 rounded focus:ring-[#FF2C68] focus:ring-2"
-                  />
-                  <label htmlFor="ativo" className="text-white font-medium">
-                    Ativar automação imediatamente
-                  </label>
+                {/* Configurações */}
+                <div className="bg-black/30 rounded-2xl border border-white/10 p-6">
+                  <h3 className="text-xl font-bold text-white mb-6">⚙️ Configurações</h3>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-white font-medium mb-2">Frequência</label>
+                      <select
+                        value={formData.frequencia}
+                        onChange={(e) => setFormData({ ...formData, frequencia: e.target.value })}
+                        className="w-full px-4 py-3 bg-black/50 border border-gray-600 rounded-xl text-white focus:border-[#FF2C68] focus:ring-1 focus:ring-[#FF2C68]/30 focus:outline-none"
+                      >
+                        {frequencias.map(freq => (
+                          <option key={freq.value} value={freq.value}>{freq.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div>
+                      <label className="block text-white font-medium mb-2">Prioridade</label>
+                      <select
+                        value={formData.prioridade}
+                        onChange={(e) => setFormData({ ...formData, prioridade: e.target.value })}
+                        className="w-full px-4 py-3 bg-black/50 border border-gray-600 rounded-xl text-white focus:border-[#FF2C68] focus:ring-1 focus:ring-[#FF2C68]/30 focus:outline-none"
+                      >
+                        {prioridades.map(prio => (
+                          <option key={prio.value} value={prio.value}>{prio.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div className="mt-6">
+                    <label className="block text-white font-medium mb-4">Canais de Notificação</label>
+                    <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                      {canaisNotificacao.map(canal => (
+                        <button
+                          key={canal.id}
+                          type="button"
+                          onClick={() => {
+                            const canais = formData.canaisNotificacao.includes(canal.id)
+                              ? formData.canaisNotificacao.filter(c => c !== canal.id)
+                              : [...formData.canaisNotificacao, canal.id];
+                            setFormData({ ...formData, canaisNotificacao: canais });
+                          }}
+                          className={`p-4 rounded-xl border transition-all ${
+                            formData.canaisNotificacao.includes(canal.id)
+                              ? 'border-[#FF2C68] bg-[#FF2C68]/20 text-[#FF2C68]'
+                              : 'border-white/20 text-white/60 hover:border-white/40'
+                          }`}
+                        >
+                          <canal.icon className="w-6 h-6 mx-auto mb-2" />
+                          <span className="text-xs font-medium">{canal.nome}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Botões */}
-                <div className="flex space-x-4 pt-4">
+                <div className="flex justify-end space-x-4">
                   <button
                     type="button"
                     onClick={() => {
@@ -843,23 +790,22 @@ export default function Automacoes() {
                       setEditingAutomacao(null);
                       resetForm();
                     }}
-                    className="flex-1 py-3 bg-gray-500/20 text-gray-300 rounded-xl font-medium hover:bg-gray-500/30 transition-colors"
+                    className="px-6 py-3 bg-gray-500/20 text-gray-400 rounded-xl hover:bg-gray-500/30 transition-colors"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-3 bg-[#FF2C68] text-white rounded-xl font-medium hover:bg-[#FF2C68]/80 transition-colors flex items-center justify-center space-x-2"
+                    className="px-8 py-3 bg-gradient-to-r from-[#FF2C68] to-pink-600 text-white font-bold rounded-xl hover:from-[#FF2C68]/80 hover:to-pink-600/80 transition-all"
                   >
-                    <Save className="w-4 h-4" />
-                    <span>{editingAutomacao ? 'Atualizar' : 'Criar'} Automação</span>
+                    {editingAutomacao ? 'Atualizar' : 'Criar'} Automação
                   </button>
                 </div>
               </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 } 

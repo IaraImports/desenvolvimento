@@ -15,8 +15,7 @@ import {
   CheckCircle,
   AlertCircle,
   Activity,
-  RefreshCw,
-  Download
+  RefreshCw
 } from 'lucide-react';
 import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore';
 import { db } from '../config/firebase';
@@ -439,8 +438,6 @@ const formatDate = (date) => {
   return '';
 };
 
-
-
 // Componente para mostrar histórico completo de vendas
 function HistoricoVendas() {
   const [vendas, setVendas] = useState([]);
@@ -450,199 +447,6 @@ function HistoricoVendas() {
   useEffect(() => {
     loadVendasHistorico();
   }, [periodo]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Função para gerar PDF da venda
-  const downloadVendaPDF = async (venda) => {
-    try {
-      toast.loading('Gerando PDF da venda...');
-      
-      // Importar dinamicamente as bibliotecas
-      const jsPDF = (await import('jspdf')).default;
-      
-      // Criar PDF
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      
-      // Configurações
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const margin = 15;
-      const lineHeight = 7;
-      let currentY = margin;
-
-      // Função para adicionar nova página se necessário
-      const checkPageBreak = (neededHeight) => {
-        if (currentY + neededHeight > 280) {
-          pdf.addPage();
-          currentY = margin;
-        }
-      };
-
-      // Resetar cor do texto para preto
-      pdf.setTextColor(0, 0, 0);
-
-      // Cabeçalho com Logo
-      pdf.setFontSize(24);
-      pdf.setFont("helvetica", "bold");
-      pdf.text('COMPROVANTE DE VENDA', margin, currentY);
-      
-      // Logo IARA HUB (moderno com gradiente simulado)
-      pdf.setFillColor(255, 44, 104); // Cor principal #FF2C68
-      pdf.rect(pageWidth - margin - 25, currentY - 10, 20, 20, 'F');
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(8);
-      pdf.text('IARA', pageWidth - margin - 20, currentY - 2);
-      
-      pdf.setTextColor(255, 44, 104); // Cor #FF2C68
-      pdf.setFontSize(18);
-      pdf.setFont("helvetica", "bold");
-      pdf.text('IARA HUB', pageWidth - margin - 40, currentY + 15);
-      pdf.setFontSize(10);
-      pdf.setFont("helvetica", "normal");
-      pdf.text('Assistência Técnica Especializada', pageWidth - margin - 60, currentY + 22);
-
-      currentY += 35;
-
-      // Resetar cor para preto
-      pdf.setTextColor(0, 0, 0);
-
-      // ID da Venda
-      pdf.setFontSize(14);
-      pdf.setFont("helvetica", "bold");
-      pdf.text(`Venda #${venda.id.substring(0, 8)}`, margin, currentY);
-      currentY += 10;
-
-      // Data e Status
-      pdf.setFontSize(10);
-      pdf.setFont("helvetica", "normal");
-      pdf.text(`Data: ${formatDate(venda.createdAt)}`, margin, currentY);
-      pdf.text(`Status: ${venda.status === 'concluida' ? 'Concluída' : 'Pendente'}`, pageWidth - margin - 50, currentY);
-      currentY += 15;
-
-      // Dados do Cliente
-      checkPageBreak(25);
-      pdf.setFontSize(12);
-      pdf.setFont("helvetica", "bold");
-      pdf.text('DADOS DO CLIENTE', margin, currentY);
-      currentY += 8;
-      
-      pdf.setFontSize(10);
-      pdf.setFont("helvetica", "normal");
-      pdf.text(`Cliente: ${venda.cliente || 'Cliente não informado'}`, margin, currentY);
-      currentY += lineHeight;
-      if (venda.vendedor) {
-        pdf.text(`Vendedor: ${venda.vendedor}`, margin, currentY);
-        currentY += lineHeight;
-      }
-      currentY += 10;
-
-      // Forma de Pagamento
-      checkPageBreak(20);
-      pdf.setFontSize(12);
-      pdf.setFont("helvetica", "bold");
-      pdf.text('FORMA DE PAGAMENTO', margin, currentY);
-      currentY += 8;
-      
-      pdf.setFontSize(10);
-      pdf.setFont("helvetica", "normal");
-      pdf.text(`Pagamento: ${venda.formaPagamento?.replace('_', ' ').toUpperCase() || 'Não informado'}`, margin, currentY);
-      currentY += 15;
-
-      // Itens da Venda
-      checkPageBreak(40);
-      pdf.setFontSize(12);
-      pdf.setFont("helvetica", "bold");
-      pdf.text('ITENS DA VENDA', margin, currentY);
-      currentY += 8;
-      
-      // Cabeçalho da tabela
-      pdf.setFontSize(9);
-      pdf.setFont("helvetica", "bold");
-      pdf.text('Item', margin, currentY);
-      pdf.text('Qtd', margin + 100, currentY);
-      pdf.text('Valor Unit.', margin + 125, currentY);
-      pdf.text('Total', margin + 155, currentY);
-      currentY += 5;
-      
-      // Linha separadora
-      pdf.line(margin, currentY, pageWidth - margin, currentY);
-      currentY += 5;
-      
-      pdf.setFont("helvetica", "normal");
-      
-      if (venda.itens && venda.itens.length > 0) {
-        venda.itens.forEach((item) => {
-          checkPageBreak(10);
-          
-          const nomeItem = pdf.splitTextToSize(item.nome || 'Item', 95);
-          pdf.text(nomeItem, margin, currentY);
-          pdf.text(item.quantidade?.toString() || '1', margin + 100, currentY);
-          pdf.text(`R$ ${(item.valorUnitario || 0).toFixed(2)}`, margin + 125, currentY);
-          pdf.text(`R$ ${(item.valorTotal || 0).toFixed(2)}`, margin + 155, currentY);
-          
-          currentY += lineHeight * Math.max(1, nomeItem.length);
-        });
-      } else {
-        pdf.text('Nenhum item registrado', margin, currentY);
-        currentY += lineHeight;
-      }
-      
-      currentY += 10;
-
-      // Totais
-      checkPageBreak(30);
-      pdf.line(margin, currentY, pageWidth - margin, currentY);
-      currentY += 8;
-      
-      pdf.setFontSize(10);
-      if (venda.subtotal && venda.subtotal !== venda.total) {
-        pdf.text(`Subtotal: R$ ${(venda.subtotal || 0).toFixed(2)}`, margin + 100, currentY);
-        currentY += lineHeight;
-      }
-      
-      if (venda.desconto && venda.desconto > 0) {
-        pdf.text(`Desconto: R$ ${(venda.desconto || 0).toFixed(2)}`, margin + 100, currentY);
-        currentY += lineHeight;
-      }
-      
-      pdf.setFont("helvetica", "bold");
-      pdf.setFontSize(12);
-      pdf.text(`TOTAL: R$ ${(venda.total || 0).toFixed(2)}`, margin + 100, currentY);
-      currentY += 20;
-
-      // Observações
-      if (venda.observacoes) {
-        checkPageBreak(25);
-        pdf.setFontSize(12);
-        pdf.setFont("helvetica", "bold");
-        pdf.text('OBSERVAÇÕES', margin, currentY);
-        currentY += 8;
-        
-        pdf.setFontSize(10);
-        pdf.setFont("helvetica", "normal");
-        const obsText = pdf.splitTextToSize(venda.observacoes, pageWidth - 2 * margin);
-        pdf.text(obsText, margin, currentY);
-        currentY += obsText.length * lineHeight + 10;
-      }
-
-      // Rodapé
-      currentY = Math.max(currentY, 250);
-      pdf.setFontSize(8);
-      pdf.setFont("helvetica", "normal");
-      pdf.text('IARA HUB - Assistência Técnica Especializada', margin, currentY);
-      pdf.text(`Documento gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, margin, currentY + 5);
-
-      // Baixar o PDF
-      const nomeArquivo = `Venda_${venda.id.substring(0, 8)}_${(venda.cliente || 'cliente').replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
-      pdf.save(nomeArquivo);
-      
-      toast.dismiss();
-      toast.success('PDF da venda gerado com sucesso!');
-      
-    } catch (error) {
-      console.error('Erro ao gerar PDF da venda:', error);
-      toast.dismiss();
-      toast.error('Erro ao gerar PDF. Tente novamente.');
-    }
-  };
 
       const loadVendasHistorico = async () => {
       try {
@@ -791,23 +595,13 @@ function HistoricoVendas() {
                   )}
                 </div>
                 
-                <div className="flex items-center space-x-3">
-                  <div className="text-right">
-                    <div className="text-green-400 font-bold text-lg">
-                      {formatCurrency(venda.total)}
-                    </div>
-                    <div className="text-white/60 text-sm">
-                      {formatDate(venda.createdAt)}
-                    </div>
+                <div className="text-right">
+                  <div className="text-green-400 font-bold text-lg">
+                    {formatCurrency(venda.total)}
                   </div>
-                  
-                  <button
-                    onClick={() => downloadVendaPDF(venda)}
-                    className="p-2 bg-purple-500/20 border border-purple-500/30 rounded-lg text-purple-400 hover:bg-purple-500/30 transition-colors"
-                    title="Baixar PDF da venda"
-                  >
-                    <Download className="w-4 h-4" />
-                  </button>
+                  <div className="text-white/60 text-sm">
+                    {formatDate(venda.createdAt)}
+                  </div>
                 </div>
               </div>
             </div>

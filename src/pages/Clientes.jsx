@@ -304,27 +304,15 @@ export default function Clientes() {
 
   const salvarCliente = async () => {
     try {
-      // Validações básicas
-      if (clienteForm.tipoDocumento === 'cpf') {
-        if (!clienteForm.nome || !clienteForm.telefone) {
-          toast.error('Nome e telefone são obrigatórios');
-          return;
-        }
-        // CPF é opcional, mas se preenchido deve ser válido
-        if (clienteForm.cpf && clienteForm.cpf.trim() && !validateCPF(clienteForm.cpf)) {
-          toast.error('CPF inválido');
-          return;
-        }
-      } else {
-        if (!clienteForm.razaoSocial || !clienteForm.telefone) {
-          toast.error('Razão social e telefone são obrigatórios');
-          return;
-        }
-        // CNPJ é opcional, mas se preenchido deve ser válido
-        if (clienteForm.cnpj && clienteForm.cnpj.trim() && !validateCNPJ(clienteForm.cnpj)) {
-          toast.error('CNPJ inválido');
-          return;
-        }
+      // Validações opcionais apenas para formato
+      if (clienteForm.cpf && !validateCPF(clienteForm.cpf)) {
+        toast.error('CPF inválido');
+        return;
+      }
+      
+      if (clienteForm.cnpj && !validateCNPJ(clienteForm.cnpj)) {
+        toast.error('CNPJ inválido');
+        return;
       }
 
       setLoading(true);
@@ -504,193 +492,6 @@ export default function Clientes() {
       observacoes: '',
       status: 'ativo'
     });
-  };
-
-  // Função para gerar PDF do histórico de vendas
-  const downloadHistoricoPDF = async (item) => {
-    try {
-      toast.loading('Gerando PDF...');
-      
-      // Importar dinamicamente as bibliotecas
-      const jsPDF = (await import('jspdf')).default;
-      
-      // Criar PDF
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      
-      // Configurações
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const margin = 15;
-      const lineHeight = 7;
-      let currentY = margin;
-
-      // Função para adicionar nova página se necessário
-      const checkPageBreak = (neededHeight) => {
-        if (currentY + neededHeight > 280) {
-          pdf.addPage();
-          currentY = margin;
-        }
-      };
-
-      // Resetar cor do texto para preto
-      pdf.setTextColor(0, 0, 0);
-
-      // Cabeçalho com Logo
-      pdf.setFontSize(24);
-      pdf.setFont("helvetica", "bold");
-      pdf.text('COMPROVANTE DE VENDA', margin, currentY);
-      
-      // Logo IARA HUB
-      pdf.setFillColor(255, 44, 104); // Cor principal #FF2C68
-      pdf.rect(pageWidth - margin - 25, currentY - 10, 20, 20, 'F');
-      pdf.setTextColor(255, 255, 255);
-      pdf.setFontSize(8);
-      pdf.text('IARA', pageWidth - margin - 20, currentY - 2);
-      
-      pdf.setTextColor(255, 44, 104); // Cor #FF2C68
-      pdf.setFontSize(18);
-      pdf.setFont("helvetica", "bold");
-      pdf.text('IARA HUB', pageWidth - margin - 40, currentY + 15);
-      pdf.setFontSize(10);
-      pdf.setFont("helvetica", "normal");
-      pdf.text('Assistência Técnica Especializada', pageWidth - margin - 60, currentY + 22);
-
-      currentY += 35;
-
-      // Resetar cor para preto
-      pdf.setTextColor(0, 0, 0);
-
-      // ID da Venda
-      pdf.setFontSize(14);
-      pdf.setFont("helvetica", "bold");
-      pdf.text(item.titulo, margin, currentY);
-      currentY += 10;
-
-      // Data e Status
-      pdf.setFontSize(10);
-      pdf.setFont("helvetica", "normal");
-      pdf.text(`Data: ${item.data.toLocaleDateString('pt-BR')} às ${item.data.toLocaleTimeString('pt-BR')}`, margin, currentY);
-      pdf.text(`Status: ${item.status || 'N/A'}`, pageWidth - margin - 50, currentY);
-      currentY += 15;
-
-      // Dados do Cliente
-      checkPageBreak(25);
-      pdf.setFontSize(12);
-      pdf.setFont("helvetica", "bold");
-      pdf.text('DADOS DO CLIENTE', margin, currentY);
-      currentY += 8;
-      
-      pdf.setFontSize(10);
-      pdf.setFont("helvetica", "normal");
-      pdf.text(`Cliente: ${selectedCliente.nome || 'N/A'}`, margin, currentY);
-      currentY += lineHeight;
-      if (selectedCliente.telefone) {
-        pdf.text(`Telefone: ${selectedCliente.telefone}`, margin, currentY);
-        currentY += lineHeight;
-      }
-      if (selectedCliente.email) {
-        pdf.text(`Email: ${selectedCliente.email}`, margin, currentY);
-        currentY += lineHeight;
-      }
-      currentY += 10;
-
-      // Detalhes da Transação
-      checkPageBreak(25);
-      pdf.setFontSize(12);
-      pdf.setFont("helvetica", "bold");
-      pdf.text('DETALHES DA TRANSAÇÃO', margin, currentY);
-      currentY += 8;
-      
-      pdf.setFontSize(10);
-      pdf.setFont("helvetica", "normal");
-      pdf.text(`Descrição: ${item.descricao}`, margin, currentY);
-      currentY += lineHeight + 5;
-
-      // Se tem dados da venda, mostrar detalhes
-      if (item.dados) {
-        const venda = item.dados;
-        
-        if (venda.formaPagamento) {
-          pdf.text(`Forma de Pagamento: ${venda.formaPagamento.replace('_', ' ').toUpperCase()}`, margin, currentY);
-          currentY += lineHeight;
-        }
-
-        if (venda.itens && venda.itens.length > 0) {
-          checkPageBreak(40);
-          pdf.setFontSize(12);
-          pdf.setFont("helvetica", "bold");
-          pdf.text('ITENS VENDIDOS', margin, currentY);
-          currentY += 8;
-          
-          // Cabeçalho da tabela
-          pdf.setFontSize(9);
-          pdf.setFont("helvetica", "bold");
-          pdf.text('Item', margin, currentY);
-          pdf.text('Qtd', margin + 100, currentY);
-          pdf.text('Valor Unit.', margin + 125, currentY);
-          pdf.text('Total', margin + 155, currentY);
-          currentY += 5;
-          
-          // Linha separadora
-          pdf.line(margin, currentY, pageWidth - margin, currentY);
-          currentY += 5;
-          
-          pdf.setFont("helvetica", "normal");
-          
-          venda.itens.forEach((item) => {
-            checkPageBreak(10);
-            
-            const nomeItem = pdf.splitTextToSize(item.nome || 'Item', 95);
-            pdf.text(nomeItem, margin, currentY);
-            pdf.text(item.quantidade?.toString() || '1', margin + 100, currentY);
-            pdf.text(`R$ ${(item.valorUnitario || 0).toFixed(2)}`, margin + 125, currentY);
-            pdf.text(`R$ ${(item.valorTotal || 0).toFixed(2)}`, margin + 155, currentY);
-            
-            currentY += lineHeight * Math.max(1, nomeItem.length);
-          });
-          
-          currentY += 10;
-
-          // Totais
-          checkPageBreak(30);
-          pdf.line(margin, currentY, pageWidth - margin, currentY);
-          currentY += 8;
-          
-          pdf.setFontSize(10);
-          if (venda.subtotal && venda.subtotal !== venda.total) {
-            pdf.text(`Subtotal: R$ ${(venda.subtotal || 0).toFixed(2)}`, margin + 100, currentY);
-            currentY += lineHeight;
-          }
-          
-          if (venda.desconto && venda.desconto > 0) {
-            pdf.text(`Desconto: R$ ${(venda.desconto || 0).toFixed(2)}`, margin + 100, currentY);
-            currentY += lineHeight;
-          }
-          
-          pdf.setFont("helvetica", "bold");
-          pdf.setFontSize(12);
-          pdf.text(`TOTAL: R$ ${(venda.total || 0).toFixed(2)}`, margin + 100, currentY);
-        }
-      }
-
-      // Rodapé
-      currentY = Math.max(currentY + 20, 250);
-      pdf.setFontSize(8);
-      pdf.setFont("helvetica", "normal");
-      pdf.text('IARA HUB - Assistência Técnica Especializada', margin, currentY);
-      pdf.text(`Documento gerado em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')}`, margin, currentY + 5);
-
-      // Baixar o PDF
-      const nomeArquivo = `${item.titulo.replace(/[^a-zA-Z0-9]/g, '_')}_${selectedCliente.nome?.replace(/[^a-zA-Z0-9]/g, '_') || 'cliente'}.pdf`;
-      pdf.save(nomeArquivo);
-      
-      toast.dismiss();
-      toast.success('PDF gerado com sucesso!');
-      
-    } catch (error) {
-      console.error('Erro ao gerar PDF:', error);
-      toast.dismiss();
-      toast.error('Erro ao gerar PDF. Tente novamente.');
-    }
   };
 
   const filteredClientes = clientes.filter(cliente => {
@@ -1262,54 +1063,90 @@ export default function Clientes() {
             onClick={() => setShowModal(false)}
           >
             <motion.div
-              className="bg-[#0D0C0C] rounded-2xl border border-[#FF2C68] p-8 w-full max-w-4xl max-h-[90vh] overflow-y-auto"
+              className="bg-gradient-to-br from-[#0D0C0C] via-[#1A1A1A] to-[#0D0C0C] rounded-3xl border border-[#FF2C68]/50 shadow-2xl backdrop-blur-xl p-8 w-full max-w-5xl max-h-[90vh] overflow-y-auto"
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-[#FF2C68]">
-                  {editingCliente ? 'Editar Cliente' : 'Novo Cliente'}
-                </h2>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="p-2 bg-gray-500/20 text-gray-400 rounded-lg hover:bg-gray-500/30 transition-colors"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+              {/* Header Profissional */}
+              <div className="relative mb-8">
+                <div className="absolute inset-0 bg-gradient-to-r from-[#FF2C68]/20 to-pink-600/20 blur-3xl"></div>
+                <div className="relative flex items-center justify-between bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl p-6 border border-[#FF2C68]/30">
+                  <div className="flex items-center space-x-4">
+                    <div className="w-16 h-16 bg-gradient-to-br from-[#FF2C68] to-pink-600 rounded-2xl flex items-center justify-center shadow-lg">
+                      <User className="w-8 h-8 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-3xl font-bold bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">
+                        {editingCliente ? 'Editar Cliente' : 'Novo Cliente'}
+                      </h2>
+                      <p className="text-white/60 mt-1">
+                        {editingCliente ? 'Atualize as informações do cliente' : 'Preencha os dados do novo cliente'}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowModal(false)}
+                    className="p-3 bg-gray-500/20 text-gray-400 rounded-xl hover:bg-gray-500/30 transition-all duration-200 hover:scale-105"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 {/* Dados Pessoais/Empresariais */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-bold text-white mb-4">Dados do Cliente</h3>
+                <div className="bg-[#0D0C0C]/30 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/20 p-6 space-y-6">
+                  <div className="flex items-center space-x-3 mb-6">
+                    <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                      <User className="w-5 h-5 text-white" />
+                    </div>
+                    <h3 className="text-xl font-bold bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">Dados do Cliente</h3>
+                  </div>
                   
                   {/* Tipo de Documento */}
                   <div>
-                    <label className="block text-white font-medium mb-2">Tipo de Cliente *</label>
-                    <div className="flex space-x-4">
-                      <label className="flex items-center space-x-2 cursor-pointer">
+                    <label className="block text-white font-semibold mb-4 flex items-center space-x-2">
+                      <Building className="w-4 h-4 text-[#FF2C68]" />
+                      <span>Tipo de Cliente</span>
+                    </label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <label className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
+                        clienteForm.tipoDocumento === 'cpf' 
+                          ? 'bg-gradient-to-br from-[#FF2C68]/20 to-pink-600/20 border-[#FF2C68]/50' 
+                          : 'bg-[#0D0C0C]/30 border-white/10 hover:border-white/20'
+                      } border rounded-xl p-4 flex items-center space-x-3`}>
                         <input
                           type="radio"
                           name="tipoDocumento"
                           value="cpf"
                           checked={clienteForm.tipoDocumento === 'cpf'}
                           onChange={(e) => setClienteForm({...clienteForm, tipoDocumento: e.target.value})}
-                          className="text-[#FF2C68] focus:ring-[#FF2C68]"
+                          className="text-[#FF2C68] focus:ring-[#FF2C68] focus:ring-2"
                         />
-                        <span className="text-white">Pessoa Física</span>
+                        <div>
+                          <span className="text-white font-medium">Pessoa Física</span>
+                          <p className="text-white/60 text-sm">CPF</p>
+                        </div>
                       </label>
-                      <label className="flex items-center space-x-2 cursor-pointer">
+                      <label className={`cursor-pointer transition-all duration-200 hover:scale-105 ${
+                        clienteForm.tipoDocumento === 'cnpj' 
+                          ? 'bg-gradient-to-br from-[#FF2C68]/20 to-pink-600/20 border-[#FF2C68]/50' 
+                          : 'bg-[#0D0C0C]/30 border-white/10 hover:border-white/20'
+                      } border rounded-xl p-4 flex items-center space-x-3`}>
                         <input
                           type="radio"
                           name="tipoDocumento"
                           value="cnpj"
                           checked={clienteForm.tipoDocumento === 'cnpj'}
                           onChange={(e) => setClienteForm({...clienteForm, tipoDocumento: e.target.value})}
-                          className="text-[#FF2C68] focus:ring-[#FF2C68]"
+                          className="text-[#FF2C68] focus:ring-[#FF2C68] focus:ring-2"
                         />
-                        <span className="text-white">Pessoa Jurídica</span>
+                        <div>
+                          <span className="text-white font-medium">Pessoa Jurídica</span>
+                          <p className="text-white/60 text-sm">CNPJ</p>
+                        </div>
                       </label>
                     </div>
                   </div>
@@ -1317,19 +1154,25 @@ export default function Clientes() {
                   {clienteForm.tipoDocumento === 'cpf' ? (
                     <>
                       <div>
-                        <label className="block text-white font-medium mb-2">Nome Completo *</label>
+                        <label className="block text-white font-semibold mb-3 flex items-center space-x-2">
+                          <User className="w-4 h-4 text-[#FF2C68]" />
+                          <span>Nome Completo</span>
+                        </label>
                         <input
                           type="text"
                           value={clienteForm.nome}
                           onChange={(e) => setClienteForm({...clienteForm, nome: e.target.value})}
-                          className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
+                          className="w-full px-4 py-4 bg-[#0D0C0C]/40 border border-white/20 rounded-xl text-white placeholder-white/50 focus:border-[#FF2C68] focus:ring-2 focus:ring-[#FF2C68]/20 focus:outline-none transition-all duration-200 hover:border-white/30"
                           placeholder="Nome completo do cliente"
                         />
                       </div>
 
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                                                          <label className="block text-white font-medium mb-2">CPF</label>
+                          <label className="block text-white font-semibold mb-3 flex items-center space-x-2">
+                            <CreditCard className="w-4 h-4 text-[#FF2C68]" />
+                            <span>CPF</span>
+                          </label>
                           <input
                             type="text"
                             value={clienteForm.cpf}
@@ -1337,18 +1180,21 @@ export default function Clientes() {
                               const formatted = formatCPF(e.target.value);
                               setClienteForm({...clienteForm, cpf: formatted});
                             }}
-                            className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
+                            className="w-full px-4 py-4 bg-[#0D0C0C]/40 border border-white/20 rounded-xl text-white placeholder-white/50 focus:border-[#FF2C68] focus:ring-2 focus:ring-[#FF2C68]/20 focus:outline-none transition-all duration-200 hover:border-white/30"
                             placeholder="000.000.000-00"
                             maxLength="14"
                           />
                         </div>
                         <div>
-                          <label className="block text-white font-medium mb-2">Data Nascimento</label>
+                          <label className="block text-white font-semibold mb-3 flex items-center space-x-2">
+                            <Calendar className="w-4 h-4 text-[#FF2C68]" />
+                            <span>Data Nascimento</span>
+                          </label>
                           <input
                             type="date"
                             value={clienteForm.dataNascimento}
                             onChange={(e) => setClienteForm({...clienteForm, dataNascimento: e.target.value})}
-                            className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white focus:border-[#FF2C68] focus:outline-none transition-colors"
+                            className="w-full px-4 py-4 bg-[#0D0C0C]/40 border border-white/20 rounded-xl text-white focus:border-[#FF2C68] focus:ring-2 focus:ring-[#FF2C68]/20 focus:outline-none transition-all duration-200 hover:border-white/30"
                           />
                         </div>
                       </div>
@@ -1389,7 +1235,7 @@ export default function Clientes() {
                       </div>
 
                       <div>
-                                                        <label className="block text-white font-medium mb-2">CNPJ</label>
+                        <label className="block text-white font-medium mb-2">CNPJ *</label>
                         <input
                           type="text"
                           value={clienteForm.cnpj}
@@ -1430,7 +1276,10 @@ export default function Clientes() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-white font-medium mb-2">Telefone *</label>
+                      <label className="block text-white font-semibold mb-3 flex items-center space-x-2">
+                        <Phone className="w-4 h-4 text-[#FF2C68]" />
+                        <span>Telefone</span>
+                      </label>
                       <input
                         type="tel"
                         value={clienteForm.telefone}
@@ -1438,18 +1287,21 @@ export default function Clientes() {
                           const formatted = formatPhone(e.target.value);
                           setClienteForm({...clienteForm, telefone: formatted});
                         }}
-                        className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
+                        className="w-full px-4 py-4 bg-[#0D0C0C]/40 border border-white/20 rounded-xl text-white placeholder-white/50 focus:border-[#FF2C68] focus:ring-2 focus:ring-[#FF2C68]/20 focus:outline-none transition-all duration-200 hover:border-white/30"
                         placeholder="(11) 99999-9999"
                         maxLength="15"
                       />
                     </div>
                     <div>
-                      <label className="block text-white font-medium mb-2">Email</label>
+                      <label className="block text-white font-semibold mb-3 flex items-center space-x-2">
+                        <Mail className="w-4 h-4 text-[#FF2C68]" />
+                        <span>Email</span>
+                      </label>
                       <input
                         type="email"
                         value={clienteForm.email}
                         onChange={(e) => setClienteForm({...clienteForm, email: e.target.value})}
-                        className="w-full px-4 py-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
+                        className="w-full px-4 py-4 bg-[#0D0C0C]/40 border border-white/20 rounded-xl text-white placeholder-white/50 focus:border-[#FF2C68] focus:ring-2 focus:ring-[#FF2C68]/20 focus:outline-none transition-all duration-200 hover:border-white/30"
                         placeholder="email@exemplo.com"
                       />
                     </div>
@@ -1470,8 +1322,13 @@ export default function Clientes() {
                 </div>
 
                 {/* Endereço */}
-                <div className="space-y-4">
-                  <h3 className="text-lg font-bold text-white mb-4">Endereço</h3>
+                <div className="bg-[#0D0C0C]/30 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/20 p-6 space-y-6">
+                  <div className="flex items-center space-x-3 mb-6">
+                    <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center">
+                      <MapPin className="w-5 h-5 text-white" />
+                    </div>
+                    <h3 className="text-xl font-bold bg-gradient-to-r from-white to-white/80 bg-clip-text text-transparent">Endereço</h3>
+                  </div>
                   
                   <div>
                     <label className="block text-white font-medium mb-2">CEP</label>
@@ -1572,24 +1429,24 @@ export default function Clientes() {
               </div>
 
               {/* Botões */}
-              <div className="flex justify-end space-x-4 mt-8">
+              <div className="flex justify-end space-x-4 mt-8 pt-6 border-t border-white/10">
                 <button
                   onClick={() => setShowModal(false)}
-                  className="px-6 py-3 bg-gray-500/20 text-gray-400 rounded-xl hover:bg-gray-500/30 transition-colors"
+                  className="px-8 py-4 bg-gray-500/20 text-gray-300 rounded-xl hover:bg-gray-500/30 transition-all duration-200 hover:scale-105 font-medium"
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={salvarCliente}
                   disabled={loading}
-                  className="px-6 py-3 bg-[#FF2C68] text-white rounded-xl hover:bg-[#FF2C68]/80 transition-colors disabled:opacity-50 flex items-center space-x-2"
+                  className="px-8 py-4 bg-gradient-to-r from-[#FF2C68] to-pink-600 text-white rounded-xl hover:from-[#FF2C68]/80 hover:to-pink-600/80 transition-all duration-200 hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-3 font-medium shadow-lg"
                 >
                   {loading ? (
-                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
-                    <Save className="w-4 h-4" />
+                    <Save className="w-5 h-5" />
                   )}
-                  <span>{loading ? 'Salvando...' : 'Salvar'}</span>
+                  <span>{loading ? 'Salvando...' : editingCliente ? 'Atualizar Cliente' : 'Salvar Cliente'}</span>
                 </button>
               </div>
             </motion.div>
@@ -1798,24 +1655,13 @@ export default function Clientes() {
                                     </p>
                                   </div>
                                 </div>
-                                <div className="flex items-center space-x-2">
-                                  <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
-                                    item.status === 'concluida' || item.status === 'entregue' ? 'bg-green-500/20 text-green-400' :
-                                    item.status === 'pendente' || item.status === 'aguardando' ? 'bg-yellow-500/20 text-yellow-400' :
-                                    'bg-blue-500/20 text-blue-400'
-                                  }`}>
-                                    {item.status?.toUpperCase()}
-                                  </span>
-                                  {item.tipo === 'venda' && (
-                                    <button
-                                      onClick={() => downloadHistoricoPDF(item)}
-                                      className="p-2 bg-purple-500/20 border border-purple-500/30 rounded-lg text-purple-400 hover:bg-purple-500/30 transition-colors"
-                                      title="Baixar PDF"
-                                    >
-                                      <Download className="w-4 h-4" />
-                                    </button>
-                                  )}
-                                </div>
+                                <span className={`px-2 py-1 rounded-lg text-xs font-medium ${
+                                  item.status === 'concluida' || item.status === 'entregue' ? 'bg-green-500/20 text-green-400' :
+                                  item.status === 'pendente' || item.status === 'aguardando' ? 'bg-yellow-500/20 text-yellow-400' :
+                                  'bg-blue-500/20 text-blue-400'
+                                }`}>
+                                  {item.status?.toUpperCase()}
+                                </span>
                               </div>
                             </div>
                           );

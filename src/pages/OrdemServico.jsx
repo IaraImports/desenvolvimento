@@ -68,6 +68,8 @@ export default function OrdemServico() {
   const [showAddEquipamento, setShowAddEquipamento] = useState(false);
   const [anexos, setAnexos] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [etapaAtual, setEtapaAtual] = useState(1); // Adicionando navegação por etapas
+  const [salvandoAuto, setSalvandoAuto] = useState(false);
 
   // Dados do cliente
   const [cliente, setCliente] = useState({
@@ -140,6 +142,19 @@ export default function OrdemServico() {
     loadOsExistentes();
   }, []);
 
+  // Avançar etapas automaticamente baseado no preenchimento
+  useEffect(() => {
+    if (cliente.nome && cliente.telefone) {
+      setEtapaAtual(Math.max(etapaAtual, 2));
+    }
+    if (equipamento.tipo && equipamento.marca && equipamento.modelo) {
+      setEtapaAtual(Math.max(etapaAtual, 3));
+    }
+    if (problema.relatado && problema.categoria) {
+      setEtapaAtual(Math.max(etapaAtual, 4));
+    }
+  }, [cliente, equipamento, problema]);
+
   const loadOsExistentes = async () => {
     try {
       const querySnapshot = await getDocs(collection(db, 'ordens_servico'));
@@ -168,8 +183,8 @@ export default function OrdemServico() {
   };
 
   const adicionarEquipamentoAoCliente = async () => {
-    if (!equipamento.tipo) {
-      toast.error('Selecione um tipo de equipamento');
+    if (!cliente.nome || !equipamento.tipo) {
+      toast.error('Selecione um cliente e tipo de equipamento');
       return;
     }
 
@@ -179,14 +194,14 @@ export default function OrdemServico() {
       const equipamentoData = {
         ...equipamento,
         etiqueta,
-        clienteNome: cliente.nome || 'Cliente não identificado',
-        clienteId: cliente.id || null,
+        clienteNome: cliente.nome,
+        clienteId: cliente.id,
         createdAt: new Date(),
         ativo: true
       };
 
       await addDoc(collection(db, 'equipamentos'), equipamentoData);
-      toast.success('Equipamento registrado com sucesso!');
+      toast.success('Equipamento adicionado ao cliente com sucesso!');
       
       return etiqueta;
     } catch (error) {
@@ -235,11 +250,6 @@ export default function OrdemServico() {
 
   const salvarEdicaoOS = async () => {
     if (!editandoOS) return;
-
-    if (!equipamento.tipo || !problema.relatado) {
-      toast.error('Preencha o tipo de equipamento e o problema relatado');
-      return;
-    }
 
     try {
       setLoading(true);
@@ -334,224 +344,9 @@ export default function OrdemServico() {
     }, 500);
   };
 
-  const downloadPDF = async () => {
-    if (!problema.relatado) {
-      toast.error('Preencha os dados obrigatórios antes de gerar o PDF');
-      return;
-    }
-
-    try {
-      // Importar dinamicamente as bibliotecas
-      const jsPDF = (await import('jspdf')).default;
-      const html2canvas = (await import('html2canvas')).default;
-      
-      // Criar elemento temporário com o conteúdo da OS
-      const elemento = document.createElement('div');
-      elemento.innerHTML = `
-        <div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: white; color: black;">
-          <!-- Cabeçalho com Logo -->
-          <div style="border-bottom: 2px solid #ddd; padding-bottom: 20px; margin-bottom: 20px;">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-              <div>
-                <h1 style="font-size: 28px; font-weight: bold; color: #333; margin: 0;">ORDEM DE SERVIÇO</h1>
-                <p style="font-size: 18px; color: #666; margin: 5px 0;">Nº ${servico.numero}</p>
-                <div style="margin-top: 10px;">
-                  <span style="background: #FF2C68; color: white; padding: 4px 12px; border-radius: 15px; font-size: 12px; font-weight: bold;">
-                    ${statusOptions.find(s => s.value === servico.status)?.label || servico.status}
-                  </span>
-                </div>
-              </div>
-              <div style="text-align: right;">
-                <div style="width: 80px; height: 80px; background: linear-gradient(135deg, #FF2C68, #FF6B9D); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 15px; margin-left: auto; box-shadow: 0 4px 15px rgba(255, 44, 104, 0.3);">
-                  <span style="color: white; font-weight: bold; font-size: 16px; letter-spacing: 1px;">IARA</span>
-                </div>
-                <h2 style="font-size: 24px; font-weight: bold; color: #FF2C68; margin: 0;">IARA HUB</h2>
-                <p style="color: #666; margin: 5px 0; font-weight: 500;">Assistência Técnica Especializada</p>
-                <p style="font-size: 12px; color: #999;">${new Date().toLocaleDateString('pt-BR')}</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- Status e Prioridade -->
-          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-              <h3 style="font-weight: bold; color: #333; margin: 0 0 8px 0;">STATUS</h3>
-              <p style="font-size: 16px; font-weight: 600; color: #007bff; margin: 0;">
-                ${statusOptions.find(s => s.value === servico.status)?.label || 'Aguardando'}
-              </p>
-            </div>
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-              <h3 style="font-weight: bold; color: #333; margin: 0 0 8px 0;">PRIORIDADE</h3>
-              <p style="font-size: 16px; font-weight: 600; color: #fd7e14; margin: 0;">
-                ${prioridadeOptions.find(p => p.value === problema.prioridade)?.label || 'Normal'}
-              </p>
-            </div>
-          </div>
-
-          <!-- Dados do Cliente -->
-          <div style="margin-bottom: 20px;">
-            <h3 style="font-size: 18px; font-weight: bold; color: #333; margin-bottom: 12px;">DADOS DO CLIENTE</h3>
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                <div>
-                  <p style="margin: 5px 0;"><strong>Nome:</strong> ${cliente.nome || 'Cliente não informado'}</p>
-                  <p style="margin: 5px 0;"><strong>Telefone:</strong> ${cliente.telefone || 'Não informado'}</p>
-                </div>
-                <div>
-                  <p style="margin: 5px 0;"><strong>Email:</strong> ${cliente.email || 'Não informado'}</p>
-                  <p style="margin: 5px 0;"><strong>Endereço:</strong> ${cliente.endereco || 'Não informado'}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Dados do Equipamento -->
-          <div style="margin-bottom: 20px;">
-            <h3 style="font-size: 18px; font-weight: bold; color: #333; margin-bottom: 12px;">EQUIPAMENTO</h3>
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                <div>
-                  <p style="margin: 5px 0;"><strong>Tipo:</strong> ${tiposEquipamento.find(t => t.value === equipamento.tipo)?.label || equipamento.tipo}</p>
-                  <p style="margin: 5px 0;"><strong>Marca:</strong> ${equipamento.marca || 'Não informado'}</p>
-                  <p style="margin: 5px 0;"><strong>Modelo:</strong> ${equipamento.modelo || 'Não informado'}</p>
-                </div>
-                <div>
-                  <p style="margin: 5px 0;"><strong>Cor:</strong> ${equipamento.cor || 'Não informado'}</p>
-                  <p style="margin: 5px 0;"><strong>IMEI/Série:</strong> ${equipamento.imei || 'Não informado'}</p>
-                  <p style="margin: 5px 0;"><strong>Senha:</strong> ${equipamento.senha ? '••••••' : 'Não informado'}</p>
-                </div>
-              </div>
-              ${equipamento.observacoes ? `
-                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #ddd;">
-                  <p style="margin: 0;"><strong>Observações:</strong> ${equipamento.observacoes}</p>
-                </div>
-              ` : ''}
-            </div>
-          </div>
-
-          <!-- Problema Relatado -->
-          <div style="margin-bottom: 20px;">
-            <h3 style="font-size: 18px; font-weight: bold; color: #333; margin-bottom: 12px;">PROBLEMA RELATADO</h3>
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-              <p style="margin: 5px 0;"><strong>Categoria:</strong> ${categoriesProblema.find(c => c.value === problema.categoria)?.label || 'Não categorizado'}</p>
-              <p style="margin: 5px 0;"><strong>Descrição:</strong> ${problema.relatado}</p>
-              ${problema.diagnostico ? `
-                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #ddd;">
-                  <p style="margin: 0;"><strong>Diagnóstico Técnico:</strong> ${problema.diagnostico}</p>
-                </div>
-              ` : ''}
-            </div>
-          </div>
-
-          <!-- Valores -->
-          <div style="margin-bottom: 20px;">
-            <h3 style="font-size: 18px; font-weight: bold; color: #333; margin-bottom: 12px;">VALORES</h3>
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-              <div style="space-y: 8px;">
-                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                  <span>Mão de Obra:</span>
-                  <span>R$ ${(parseFloat(servico.valorMaoObra) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
-                  <span>Peças/Componentes:</span>
-                  <span>R$ ${(parseFloat(servico.valorPecas) || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                </div>
-                <div style="display: flex; justify-content: space-between; border-top: 1px solid #ddd; padding-top: 8px; font-weight: bold; font-size: 18px;">
-                  <span>Total:</span>
-                  <span>R$ ${calcularTotal().toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Informações do Serviço -->
-          <div style="margin-bottom: 20px;">
-            <h3 style="font-size: 18px; font-weight: bold; color: #333; margin-bottom: 12px;">INFORMAÇÕES DO SERVIÇO</h3>
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
-              <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                <div>
-                  <p style="margin: 5px 0;"><strong>Técnico Responsável:</strong> ${servico.tecnico || 'Não atribuído'}</p>
-                  <p style="margin: 5px 0;"><strong>Previsão de Entrega:</strong> ${servico.previsaoEntrega ? new Date(servico.previsaoEntrega).toLocaleDateString('pt-BR') : 'A definir'}</p>
-                </div>
-              </div>
-              ${servico.observacoesTecnicas ? `
-                <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #ddd;">
-                  <p style="margin: 0;"><strong>Observações Técnicas:</strong> ${servico.observacoesTecnicas}</p>
-                </div>
-              ` : ''}
-            </div>
-          </div>
-
-          <!-- Termos e Condições -->
-          <div style="border-top: 2px solid #ddd; padding-top: 15px;">
-            <h3 style="font-size: 18px; font-weight: bold; color: #333; margin-bottom: 12px;">TERMOS E CONDIÇÕES</h3>
-            <div style="font-size: 12px; color: #666; line-height: 1.5;">
-              <p style="margin: 5px 0;">• O prazo de garantia do serviço é de 90 dias a partir da data de entrega</p>
-              <p style="margin: 5px 0;">• O cliente tem 30 dias para retirar o equipamento após a conclusão do serviço</p>
-              <p style="margin: 5px 0;">• Equipamentos não retirados após 60 dias serão considerados abandonados</p>
-              <p style="margin: 5px 0;">• A empresa não se responsabiliza por dados perdidos durante o serviço</p>
-            </div>
-          </div>
-
-          <!-- Assinaturas -->
-          <div style="margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px;">
-            <div style="text-align: center;">
-              <div style="border-top: 1px solid #333; padding-top: 8px; margin-top: 50px;">
-                <p style="margin: 0; font-size: 12px; color: #666;">Assinatura do Cliente</p>
-              </div>
-            </div>
-            <div style="text-align: center;">
-              <div style="border-top: 1px solid #333; padding-top: 8px; margin-top: 50px;">
-                <p style="margin: 0; font-size: 12px; color: #666;">Assinatura do Técnico</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-
-      document.body.appendChild(elemento);
-
-      // Configurar html2canvas
-      const canvas = await html2canvas(elemento, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff'
-      });
-
-      // Remover elemento temporário
-      document.body.removeChild(elemento);
-
-      // Criar PDF
-      const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF('p', 'mm', 'a4');
-      
-      const imgWidth = 210;
-      const pageHeight = 295;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
-
-      pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
-
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
-      }
-
-      // Baixar o PDF
-      const nomeArquivo = `OS_${servico.numero}_${cliente.nome?.replace(/[^a-zA-Z0-9]/g, '_') || 'cliente'}.pdf`;
-      pdf.save(nomeArquivo);
-      
-      toast.success('PDF gerado com sucesso!');
-      
-    } catch (error) {
-      console.error('Erro ao gerar PDF:', error);
-      toast.error('Erro ao gerar PDF. Tente novamente.');
-    }
+  const downloadPDF = () => {
+    // Aqui você implementaria a geração de PDF
+    toast.success('Gerando PDF... (funcionalidade em desenvolvimento)');
   };
 
   const loadCustomCategorias = async () => {
@@ -724,13 +519,8 @@ export default function OrdemServico() {
   };
 
   const salvarOS = async () => {
-    if (!cliente.nome || cliente.nome.trim() === '') {
-      toast.error('Selecione um cliente para criar a OS');
-      return;
-    }
-
-    if (!equipamento.tipo || !problema.relatado) {
-      toast.error('Preencha o tipo de equipamento e o problema relatado');
+    if (!cliente.nome || !equipamento.tipo || !problema.relatado) {
+      toast.error('Preencha os campos obrigatórios');
       return;
     }
 
@@ -793,14 +583,14 @@ export default function OrdemServico() {
             </div>
           </div>
           <div className="text-right">
-            {/* Logo Moderna do IARA HUB */}
+            {/* Logo Preta do IARA HUB */}
             <div className="mb-4 flex justify-end">
-              <div className="w-20 h-20 bg-gradient-to-br from-[#FF2C68] to-[#FF6B9D] rounded-xl flex items-center justify-center shadow-lg">
-                <span className="text-white font-bold text-sm tracking-wider">IARA</span>
+              <div className="w-20 h-20 bg-black rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">IARA</span>
               </div>
             </div>
-            <h2 className="text-2xl font-bold text-[#FF2C68]">IARA HUB</h2>
-            <p className="text-gray-600 font-medium">Assistência Técnica Especializada</p>
+            <h2 className="text-2xl font-bold text-black">IARA HUB</h2>
+            <p className="text-gray-600">Assistência Técnica</p>
             <p className="text-sm text-gray-500">{new Date().toLocaleDateString('pt-BR')}</p>
           </div>
         </div>
@@ -828,7 +618,7 @@ export default function OrdemServico() {
         <div className="bg-gray-50 p-4 rounded">
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <p><strong>Nome:</strong> {cliente.nome || 'Cliente não informado'}</p>
+              <p><strong>Nome:</strong> {cliente.nome}</p>
               <p><strong>Telefone:</strong> {cliente.telefone || 'Não informado'}</p>
             </div>
             <div>
@@ -949,27 +739,49 @@ export default function OrdemServico() {
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Header Profissional */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between mb-8"
+      >
         <div className="flex items-center space-x-4">
           <button
             onClick={() => navigate('/vendas')}
-            className="p-2 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white hover:bg-[#0D0C0C]/70 transition-colors"
+            className="p-3 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-xl text-white hover:bg-[#0D0C0C]/70 transition-all duration-200 hover:scale-105"
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
+          <div className="w-16 h-16 bg-gradient-to-br from-[#FF2C68] to-pink-600 rounded-2xl flex items-center justify-center shadow-xl">
+            <Clipboard className="w-8 h-8 text-white" />
+          </div>
           <div>
-            <h1 className="text-3xl font-bold text-white">Ordem de Serviço</h1>
-            <p className="text-white/60">Gerenciar serviços técnicos</p>
+            <div className="flex items-center space-x-3 mb-2">
+              <h1 className="text-4xl font-bold text-white">Ordem de Serviço</h1>
+              <span className="bg-[#FF2C68]/20 text-[#FF2C68] px-3 py-1 rounded-full text-sm font-medium">
+                {servico.numero}
+              </span>
+            </div>
+            <div className="flex items-center space-x-4 text-white/60">
+              <span className="text-lg">Criação e gestão de serviços técnicos</span>
+              <span>•</span>
+              <span className="bg-green-500/20 px-3 py-1 rounded-full text-sm font-medium">
+                {osExistentes.length} OS Registradas
+              </span>
+              <span>•</span>
+              <span className="text-sm">
+                Técnico: {servico.tecnico || 'Não atribuído'}
+              </span>
+            </div>
           </div>
         </div>
-        <div className="flex items-center space-x-2">
+        <div className="flex items-center space-x-3">
           <button
             onClick={() => navigate('/vendas/os/calendario')}
-            className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-xl flex items-center space-x-2 transition-colors"
+            className="bg-purple-500 hover:bg-purple-600 text-white px-6 py-3 rounded-xl flex items-center space-x-2 transition-all duration-200 shadow-lg hover:scale-105"
           >
-            <Calendar className="w-4 h-4" />
-            <span>Calendário</span>
+            <Calendar className="w-5 h-5" />
+            <span className="font-medium">Calendário</span>
           </button>
           
           <button
@@ -977,21 +789,72 @@ export default function OrdemServico() {
               window.open('/tecnico-mobile', '_blank');
               toast.success('Página do técnico mobile aberta!');
             }}
-            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl flex items-center space-x-2 transition-colors"
+            className="bg-green-500 hover:bg-green-600 text-white px-6 py-3 rounded-xl flex items-center space-x-2 transition-all duration-200 shadow-lg hover:scale-105"
           >
-            <Smartphone className="w-4 h-4" />
-            <span>📱 Técnico Mobile</span>
+            <Smartphone className="w-5 h-5" />
+            <span className="font-medium">📱 Técnico Mobile</span>
           </button>
           
           <button
             onClick={() => setShowPreview(true)}
-            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-xl flex items-center space-x-2 transition-colors"
+            className="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-xl flex items-center space-x-2 transition-all duration-200 shadow-lg hover:scale-105"
           >
-            <Eye className="w-4 h-4" />
-            <span>Visualizar</span>
+            <Eye className="w-5 h-5" />
+            <span className="font-medium">Visualizar</span>
           </button>
         </div>
-      </div>
+      </motion.div>
+
+      {/* Barra de Progresso */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="bg-[#0D0C0C]/50 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 p-6"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-white">Progresso da OS</h3>
+          <span className="text-white/60 text-sm">Etapa {etapaAtual} de 4</span>
+        </div>
+        
+        <div className="flex items-center space-x-4 mb-4">
+          {[
+            { numero: 1, titulo: 'Cliente', icone: User, status: etapaAtual >= 1 ? 'completed' : 'pending' },
+            { numero: 2, titulo: 'Equipamento', icone: Smartphone, status: etapaAtual >= 2 ? 'completed' : 'pending' },
+            { numero: 3, titulo: 'Problema', icone: AlertTriangle, status: etapaAtual >= 3 ? 'completed' : 'pending' },
+            { numero: 4, titulo: 'Serviço', icone: Wrench, status: etapaAtual >= 4 ? 'completed' : 'pending' }
+          ].map((etapa, index) => (
+            <div key={etapa.numero} className="flex items-center space-x-2">
+              <div 
+                className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all duration-300 ${
+                  etapa.status === 'completed' 
+                    ? 'bg-[#FF2C68] text-white shadow-lg' 
+                    : etapa.numero === etapaAtual 
+                      ? 'bg-[#FF2C68]/30 text-[#FF2C68] border-2 border-[#FF2C68]'
+                      : 'bg-white/10 text-white/40'
+                }`}
+              >
+                <etapa.icone className="w-6 h-6" />
+              </div>
+              <div className="hidden sm:block">
+                <p className={`font-medium ${etapa.status === 'completed' || etapa.numero === etapaAtual ? 'text-white' : 'text-white/40'}`}>
+                  {etapa.titulo}
+                </p>
+              </div>
+              {index < 3 && (
+                <div className={`flex-1 h-1 rounded mx-4 ${etapa.status === 'completed' ? 'bg-[#FF2C68]' : 'bg-white/10'}`} />
+              )}
+            </div>
+          ))}
+        </div>
+        
+        <div className="w-full bg-white/10 rounded-full h-2">
+          <div 
+            className="bg-gradient-to-r from-[#FF2C68] to-pink-600 h-2 rounded-full transition-all duration-500"
+            style={{ width: `${(etapaAtual / 4) * 100}%` }}
+          />
+        </div>
+      </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Coluna Esquerda */}
@@ -1005,7 +868,7 @@ export default function OrdemServico() {
             
             <div className="space-y-4">
               <div className="relative">
-                <label className="block text-white font-medium mb-2">Nome</label>
+                <label className="block text-white font-medium mb-2">Nome *</label>
                 <input
                   type="text"
                   value={cliente.nome}
@@ -1507,98 +1370,119 @@ export default function OrdemServico() {
                   <label className="block text-white font-medium mb-2">Ações</label>
                   <button
                     onClick={adicionarEquipamentoAoCliente}
-                    disabled={!equipamento.tipo}
+                    disabled={!cliente.nome || !equipamento.tipo}
                     className="w-full px-4 py-2 bg-green-500/20 border border-green-500/30 rounded-lg text-green-400 hover:bg-green-500/30 disabled:bg-gray-500/20 disabled:text-gray-500 transition-colors flex items-center justify-center space-x-2"
                   >
                     <Plus className="w-4 h-4" />
-                    <span>Registrar Equipamento</span>
+                    <span>Adicionar ao Cliente</span>
                   </button>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Botões de Ação */}
-          <div className="space-y-3">
-            {editandoOS ? (
-              <>
-                              <button
-                onClick={salvarEdicaoOS}
-                disabled={!equipamento.tipo || !problema.relatado || loading}
-                className="w-full bg-[#FF2C68] hover:bg-[#FF2C68]/80 disabled:bg-gray-500 text-white py-4 rounded-xl font-bold transition-colors flex items-center justify-center space-x-2"
-              >
+          {/* Painel de Ações Profissional */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="bg-gradient-to-br from-[#0D0C0C]/80 to-[#FF2C68]/10 backdrop-blur-xl rounded-2xl border border-[#FF2C68]/30 p-6 shadow-2xl"
+          >
+            <h3 className="text-xl font-bold text-white mb-6 flex items-center space-x-2">
+              <Settings className="w-6 h-6 text-[#FF2C68]" />
+              <span>Ações da OS</span>
+            </h3>
+            
+            <div className="space-y-4">
+              {editandoOS ? (
+                <>
+                  <button
+                    onClick={salvarEdicaoOS}
+                    disabled={!cliente.nome || !equipamento.tipo || !problema.relatado || loading}
+                    className="w-full bg-gradient-to-r from-[#FF2C68] to-pink-600 hover:from-[#FF2C68]/80 hover:to-pink-600/80 disabled:from-gray-500 disabled:to-gray-600 text-white py-4 rounded-xl font-bold transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:scale-105 disabled:hover:scale-100"
+                  >
+                    {loading ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <span>Salvando Edição...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-5 h-5" />
+                        <span>Salvar Alterações</span>
+                      </>
+                    )}
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      setEditandoOS(null);
+                      limparFormulario();
+                    }}
+                    className="w-full bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 text-white py-3 rounded-xl font-medium transition-all duration-200 hover:scale-105"
+                  >
+                    Cancelar Edição
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={salvarOS}
+                  disabled={!cliente.nome || !equipamento.tipo || !problema.relatado || loading}
+                  className="w-full bg-gradient-to-r from-[#FF2C68] to-pink-600 hover:from-[#FF2C68]/80 hover:to-pink-600/80 disabled:from-gray-500 disabled:to-gray-600 text-white py-4 rounded-xl font-bold transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:scale-105 disabled:hover:scale-100"
+                >
                   {loading ? (
                     <>
                       <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                      <span>Salvando Edição...</span>
+                      <span>Salvando...</span>
                     </>
                   ) : (
                     <>
                       <Save className="w-5 h-5" />
-                      <span>Salvar Alterações</span>
+                      <span>Salvar OS</span>
                     </>
                   )}
                 </button>
+              )}
+              
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  onClick={() => setShowPreview(true)}
+                  disabled={!cliente.nome || !problema.relatado}
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-gray-500 disabled:to-gray-600 text-white py-3 rounded-xl font-medium transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:scale-105 disabled:hover:scale-100"
+                >
+                  <Eye className="w-4 h-4" />
+                  <span className="hidden sm:inline">Visualizar</span>
+                </button>
                 
                 <button
-                  onClick={() => {
-                    setEditandoOS(null);
-                    limparFormulario();
-                  }}
-                  className="w-full bg-gray-500 hover:bg-gray-600 text-white py-3 rounded-xl font-medium transition-colors"
+                  onClick={imprimirOS}
+                  disabled={!cliente.nome || !problema.relatado}
+                  className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 disabled:from-gray-500 disabled:to-gray-600 text-white py-3 rounded-xl font-medium transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:scale-105 disabled:hover:scale-100"
                 >
-                  Cancelar Edição
+                  <Printer className="w-4 h-4" />
+                  <span className="hidden sm:inline">Imprimir</span>
                 </button>
-              </>
-            ) : (
+                
+                <button
+                  onClick={downloadPDF}
+                  disabled={!cliente.nome || !problema.relatado}
+                  className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 disabled:from-gray-500 disabled:to-gray-600 text-white py-3 rounded-xl font-medium transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:scale-105 disabled:hover:scale-100"
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="hidden sm:inline">PDF</span>
+                </button>
+              </div>
+
+              {/* Botão de Limpar Formulário */}
               <button
-                onClick={salvarOS}
-                disabled={!equipamento.tipo || !problema.relatado || loading}
-                className="w-full bg-[#FF2C68] hover:bg-[#FF2C68]/80 disabled:bg-gray-500 text-white py-4 rounded-xl font-bold transition-colors flex items-center justify-center space-x-2"
+                onClick={limparFormulario}
+                className="w-full bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white py-3 rounded-xl font-medium transition-all duration-200 flex items-center justify-center space-x-2 shadow-lg hover:scale-105"
               >
-                {loading ? (
-                  <>
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Salvando...</span>
-                  </>
-                ) : (
-                  <>
-                    <Save className="w-5 h-5" />
-                    <span>Salvar OS</span>
-                  </>
-                )}
-              </button>
-            )}
-            
-            <div className="grid grid-cols-3 gap-3">
-              <button
-                onClick={() => setShowPreview(true)}
-                disabled={!problema.relatado}
-                className="bg-blue-500 hover:bg-blue-600 disabled:bg-gray-500 text-white py-3 rounded-xl font-medium transition-colors flex items-center justify-center space-x-2"
-              >
-                <Eye className="w-4 h-4" />
-                <span>Visualizar</span>
-              </button>
-              
-              <button
-                onClick={imprimirOS}
-                disabled={!problema.relatado}
-                className="bg-green-500 hover:bg-green-600 disabled:bg-gray-500 text-white py-3 rounded-xl font-medium transition-colors flex items-center justify-center space-x-2"
-              >
-                <Printer className="w-4 h-4" />
-                <span>Imprimir</span>
-              </button>
-              
-              <button
-                onClick={downloadPDF}
-                disabled={!problema.relatado}
-                className="bg-purple-500 hover:bg-purple-600 disabled:bg-gray-500 text-white py-3 rounded-xl font-medium transition-colors flex items-center justify-center space-x-2"
-              >
-                <Download className="w-4 h-4" />
-                <span>PDF</span>
+                <X className="w-4 h-4" />
+                <span>Limpar Formulário</span>
               </button>
             </div>
-          </div>
+          </motion.div>
         </div>
       </div>
 
