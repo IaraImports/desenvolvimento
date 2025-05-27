@@ -1060,9 +1060,9 @@ export default function ChatInterno() {
   });
 
   return (
-    <div className="h-[calc(100vh-120px)] flex bg-[#0D0C0C] rounded-2xl border border-[#FF2C68]/30 overflow-hidden">
+    <div className="h-[calc(100vh-120px)] flex bg-[#0D0C0C] rounded-2xl border border-[#FF2C68]/30 overflow-hidden chat-container">
       {/* Sidebar - Lista de Conversas */}
-      <div className="w-1/3 min-w-[320px] border-r border-[#FF2C68]/30 flex flex-col">
+      <div className="w-1/3 min-w-[320px] border-r border-[#FF2C68]/30 flex flex-col chat-sidebar">
         {/* Header da Sidebar PREMIUM */}
         <div className="p-4 border-b border-[#FF2C68]/30 bg-gradient-to-r from-[#0D0C0C] to-purple-900/10">
           <div className="flex items-center justify-between mb-4">
@@ -1270,11 +1270,11 @@ export default function ChatInterno() {
       </div>
 
       {/* Área Principal do Chat */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col min-w-0 chat-main">
         {selectedConversation ? (
           <>
             {/* Header do Chat */}
-            <div className="p-4 border-b border-[#FF2C68]/30 flex items-center justify-between">
+            <div className="p-4 border-b border-[#FF2C68]/30 flex items-center justify-between chat-header">
               <div className="flex items-center space-x-3 flex-1 min-w-0">
                 {/* Avatar */}
                 <div className="w-10 h-10 bg-[#FF2C68] rounded-full flex items-center justify-center">
@@ -1349,7 +1349,7 @@ export default function ChatInterno() {
             </div>
 
             {/* Área de Mensagens */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 messages-container">
               {filteredMessages.map((message, index) => {
                 const isMyMessage = message.senderId === user.uid;
                 const showDate = index === 0 || 
@@ -1383,7 +1383,7 @@ export default function ChatInterno() {
                           </p>
                         )}
 
-                        <div className={`rounded-2xl px-4 py-3 relative group ${
+                        <div className={`rounded-2xl px-4 py-3 relative group message-bubble ${
                           isMyMessage 
                             ? 'bg-[#FF2C68] text-white' 
                             : 'bg-[#0D0C0C]/50 text-white border border-[#FF2C68]/30'
@@ -1531,9 +1531,9 @@ export default function ChatInterno() {
             )}
 
             {/* Input de mensagem PREMIUM */}
-            <div className="p-4 border-t border-[#FF2C68]/30 bg-gradient-to-r from-[#0D0C0C] to-purple-900/10">
+            <div className="p-4 border-t border-[#FF2C68]/30 bg-gradient-to-r from-[#0D0C0C] to-purple-900/10 message-input-container">
               {/* Barra de ferramentas */}
-              <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center justify-between mb-3 message-input-toolbar">
                 <div className="flex items-center space-x-2">
                   <motion.button
                     className="p-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-all"
@@ -1641,7 +1641,7 @@ export default function ChatInterno() {
                         }
                       }}
                       placeholder="✍️ Digite sua mensagem aqui... (Enter para enviar)"
-                      className="w-full px-4 py-4 pr-16 bg-gradient-to-r from-[#0D0C0C]/60 to-purple-900/20 border border-[#FF2C68]/30 rounded-2xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none focus:ring-2 focus:ring-[#FF2C68]/20 transition-all resize-none"
+                      className="w-full px-4 py-4 pr-16 bg-gradient-to-r from-[#0D0C0C]/60 to-purple-900/20 border border-[#FF2C68]/30 rounded-2xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none focus:ring-2 focus:ring-[#FF2C68]/20 transition-all resize-none message-input-field"
                     />
                     
                     {/* Indicador de digitação */}
@@ -1924,13 +1924,13 @@ export default function ChatInterno() {
       <AnimatePresence>
         {showFilePreview && selectedFile && (
           <motion.div
-            className="fixed inset-0 bg-[#0D0C0C]/90 backdrop-blur-sm z-[99999] flex items-center justify-center p-4"
+            className="fixed inset-0 bg-[#0D0C0C]/90 backdrop-blur-sm z-[99999] flex items-center justify-center p-4 modal-container"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
             <motion.div
-              className="bg-gradient-to-br from-[#0D0C0C] to-purple-900/20 rounded-2xl border border-[#FF2C68]/50 p-6 w-full max-w-lg shadow-2xl"
+              className="bg-gradient-to-br from-[#0D0C0C] to-purple-900/20 rounded-2xl border border-[#FF2C68]/50 p-6 w-full max-w-lg shadow-2xl modal-content"
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
