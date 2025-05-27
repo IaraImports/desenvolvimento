@@ -6,7 +6,14 @@ import {
   File, Mic, X, Edit, Trash2, Download, Copy, Reply, Forward,
   UserPlus, UserMinus, Crown, Shield, User, Camera, Mic as MicIcon,
   Clock, Check, CheckCheck, Volume2, VolumeX, Archive, Star,
-  Heart, ThumbsUp, Laugh, AlertCircle, Info, Bell, BellOff
+  Heart, ThumbsUp, Laugh, AlertCircle, Info, Bell, BellOff, 
+  Zap, Sparkles, Coffee, Gift, MapPin, Calendar, Music, 
+  Gamepad2, BookOpen, Briefcase, Car, Home, ShoppingBag,
+  Headphones, Globe, Wifi, Battery, Signal, Moon, Sun,
+  Filter, Pin, Hash, AtSign, Bookmark, Share2, Eye, EyeOff,
+  VolumeOff, Volume1, Volume2Icon, Maximize2, Minimize2,
+  RotateCcw, Palette, Type, Bold, Italic, Underline, Code,
+  Link2, Quote, List, CheckSquare, Circle, Square, Triangle
 } from 'lucide-react';
 import { 
   collection, addDoc, onSnapshot, query, orderBy, where, 
@@ -44,24 +51,51 @@ const useNotifications = () => {
   return { showNotification, permission };
 };
 
-// Componente de Status de Mensagem
+// Componente de Status de Mensagem PREMIUM
 const MessageStatus = ({ message, isMyMessage }) => {
   if (!isMyMessage) return null;
 
+  const getStatusInfo = () => {
+    switch (message.status) {
+      case 'sending':
+        return { icon: Clock, color: 'text-amber-400', title: '⏱️ Enviando...' };
+      case 'sent':
+        return { icon: Check, color: 'text-gray-400', title: '✅ Enviado' };
+      case 'delivered':
+        return { icon: CheckCheck, color: 'text-blue-400', title: '📨 Entregue' };
+      case 'read':
+        return { icon: CheckCheck, color: 'text-green-400', title: '👁️ Lido' };
+      default:
+        return { icon: Clock, color: 'text-gray-400', title: '⏳ Processando' };
+    }
+  };
+
+  const { icon: Icon, color, title } = getStatusInfo();
+
   return (
-    <div className="flex items-center ml-1">
-      {message.status === 'sending' && <Clock className="w-3 h-3 text-white/50" />}
-      {message.status === 'sent' && <Check className="w-3 h-3 text-white/70" />}
-      {message.status === 'delivered' && <CheckCheck className="w-3 h-3 text-white/70" />}
-      {message.status === 'read' && <CheckCheck className="w-3 h-3 text-blue-400" />}
+    <div className="flex items-center ml-1" title={title}>
+      <Icon className={`w-3 h-3 ${color} transition-colors`} />
+      {message.status === 'sending' && (
+        <div className="ml-1">
+          <div className="flex space-x-1">
+            <div className="w-1 h-1 bg-amber-400 rounded-full animate-bounce"></div>
+            <div className="w-1 h-1 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+            <div className="w-1 h-1 bg-amber-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
 
-// Componente de Reações
+// Componente de Reações AVANÇADAS 🎭
 const MessageReactions = ({ message, onReact, currentUserId }) => {
   const reactions = message.reactions || {};
-  const reactionTypes = ['👍', '❤️', '😂', '😮', '😢', '😡'];
+  const reactionTypes = [
+    '👍', '❤️', '😂', '😮', '😢', '😡', '🔥', '⭐', '🎉', '💯', 
+    '👏', '🙌', '💪', '🤔', '😍', '🤗', '😎', '🚀', '⚡', '💎',
+    '🎯', '🏆', '💡', '☕', '🎵', '📱', '💰', '🎊', '🌟', '💝'
+  ];
   const [showReactionPicker, setShowReactionPicker] = useState(false);
 
   const handleReact = (emoji) => {
@@ -84,19 +118,43 @@ const MessageReactions = ({ message, onReact, currentUserId }) => {
         {myReaction ? myReaction[0] : <Heart className="w-4 h-4" />}
       </button>
 
-      {/* Picker de reações */}
+      {/* Picker de reações PREMIUM */}
       {showReactionPicker && (
-        <div className="absolute bottom-full left-0 mb-2 bg-[#0D0C0C] border border-[#FF2C68]/30 rounded-lg p-2 flex space-x-1 z-50">
-          {reactionTypes.map(emoji => (
-            <button
-              key={emoji}
-              onClick={() => handleReact(emoji)}
-              className="hover:bg-[#FF2C68]/20 p-1 rounded text-lg"
-            >
-              {emoji}
+        <motion.div
+          className="absolute bottom-full left-0 mb-2 bg-gradient-to-br from-[#0D0C0C] via-purple-900/20 to-[#0D0C0C] border border-[#FF2C68]/50 rounded-2xl p-3 z-50 backdrop-blur-xl shadow-2xl"
+          initial={{ opacity: 0, scale: 0.8, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.8, y: 10 }}
+          transition={{ duration: 0.2 }}
+        >
+          <div className="flex items-center mb-2">
+            <Sparkles className="w-4 h-4 text-[#FF2C68] mr-2" />
+            <span className="text-white/80 text-xs font-medium">Reações Rápidas</span>
+          </div>
+          <div className="grid grid-cols-10 gap-1 max-w-[300px]">
+            {reactionTypes.map((emoji, index) => (
+              <motion.button
+                key={emoji}
+                onClick={() => handleReact(emoji)}
+                className="hover:bg-[#FF2C68]/20 p-2 rounded-lg text-lg transition-all hover:scale-110 hover:shadow-lg"
+                whileHover={{ scale: 1.2, rotate: 5 }}
+                whileTap={{ scale: 0.9 }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.02 }}
+                title={`Reagir com ${emoji}`}
+              >
+                {emoji}
+              </motion.button>
+            ))}
+          </div>
+          <div className="mt-2 pt-2 border-t border-[#FF2C68]/20">
+            <button className="text-[#FF2C68] text-xs hover:text-[#FF2C68]/80 transition-colors flex items-center">
+              <Plus className="w-3 h-3 mr-1" />
+              Mais reações
             </button>
-          ))}
-        </div>
+          </div>
+        </motion.div>
       )}
 
       {/* Exibir reações existentes */}
@@ -637,38 +695,87 @@ export default function ChatInterno() {
     <div className="h-[calc(100vh-120px)] flex bg-[#0D0C0C] rounded-2xl border border-[#FF2C68]/30 overflow-hidden">
       {/* Sidebar - Lista de Conversas */}
       <div className="w-1/3 min-w-[320px] border-r border-[#FF2C68]/30 flex flex-col">
-        {/* Header da Sidebar */}
-        <div className="p-4 border-b border-[#FF2C68]/30">
+        {/* Header da Sidebar PREMIUM */}
+        <div className="p-4 border-b border-[#FF2C68]/30 bg-gradient-to-r from-[#0D0C0C] to-purple-900/10">
           <div className="flex items-center justify-between mb-4">
-            <h1 className="text-xl font-bold text-white">Chat Interno</h1>
+            <div className="flex items-center space-x-3">
+              <div className="relative">
+                <div className="w-10 h-10 bg-gradient-to-br from-[#FF2C68] to-purple-600 rounded-xl flex items-center justify-center">
+                  <MessageCircle className="w-5 h-5 text-white" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-[#0D0C0C] flex items-center justify-center">
+                  <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
+                </div>
+              </div>
+              <div>
+                <h1 className="text-lg font-bold bg-gradient-to-r from-white to-purple-200 bg-clip-text text-transparent">
+                  💬 Chat Interno
+                </h1>
+                <p className="text-white/60 text-xs">Sistema de comunicação avançado</p>
+              </div>
+            </div>
             <div className="flex space-x-2">
-              <button
+              <motion.button
                 onClick={() => setShowNewChatModal(true)}
-                className="p-2 bg-[#FF2C68]/20 text-[#FF2C68] rounded-lg hover:bg-[#FF2C68]/30 transition-colors"
-                title="Nova conversa"
+                className="p-2 bg-gradient-to-br from-[#FF2C68]/20 to-purple-600/20 text-[#FF2C68] rounded-xl hover:from-[#FF2C68]/30 hover:to-purple-600/30 transition-all border border-[#FF2C68]/30"
+                title="💬 Nova conversa"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
-                <MessageCircle className="w-5 h-5" />
-              </button>
-              <button
+                <MessageCircle className="w-4 h-4" />
+              </motion.button>
+              <motion.button
                 onClick={() => setShowGroupModal(true)}
-                className="p-2 bg-[#FF2C68]/20 text-[#FF2C68] rounded-lg hover:bg-[#FF2C68]/30 transition-colors"
-                title="Criar grupo"
+                className="p-2 bg-gradient-to-br from-blue-500/20 to-cyan-600/20 text-blue-400 rounded-xl hover:from-blue-500/30 hover:to-cyan-600/30 transition-all border border-blue-500/30"
+                title="👥 Criar grupo"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
               >
-                <Users className="w-5 h-5" />
-              </button>
+                <Users className="w-4 h-4" />
+              </motion.button>
+              <motion.button
+                className="p-2 bg-gradient-to-br from-purple-500/20 to-pink-600/20 text-purple-400 rounded-xl hover:from-purple-500/30 hover:to-pink-600/30 transition-all border border-purple-500/30"
+                title="⚙️ Configurações"
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <Settings className="w-4 h-4" />
+              </motion.button>
             </div>
           </div>
 
           {/* Busca */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/40" />
+          {/* Busca PREMIUM */}
+          <div className="relative group">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-white/40 group-focus-within:text-[#FF2C68] transition-colors" />
             <input
               type="text"
-              placeholder="Buscar conversas..."
+              placeholder="🔍 Buscar conversas, pessoas ou mensagens..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors text-sm"
+              className="w-full pl-10 pr-10 py-3 bg-gradient-to-r from-[#0D0C0C]/50 to-purple-900/10 border border-[#FF2C68]/30 rounded-xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none focus:ring-2 focus:ring-[#FF2C68]/20 transition-all text-sm"
             />
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/40 hover:text-white transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+            <div className="absolute inset-0 rounded-xl bg-gradient-to-r from-[#FF2C68]/10 to-purple-600/10 opacity-0 group-focus-within:opacity-100 transition-opacity -z-10"></div>
+          </div>
+
+          {/* Status do usuário */}
+          <div className="mt-3 flex items-center justify-between">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+              <span className="text-white/60 text-xs">🟢 Online agora</span>
+            </div>
+            <div className="flex items-center space-x-1">
+              <Wifi className="w-3 h-3 text-green-400" />
+              <span className="text-white/40 text-xs">Conectado</span>
+            </div>
           </div>
         </div>
 
@@ -710,44 +817,74 @@ export default function ChatInterno() {
                     <div className="flex items-center space-x-3">
                       {/* Avatar */}
                       <div className="relative">
-                        <div className="w-12 h-12 bg-[#FF2C68] rounded-full flex items-center justify-center">
+                        <div className="w-12 h-12 bg-gradient-to-br from-[#FF2C68] to-purple-600 rounded-2xl flex items-center justify-center shadow-lg">
                           {conversation.isGroup ? (
-                            <Users className="w-6 h-6 text-white" />
+                            <div className="relative">
+                              <Users className="w-6 h-6 text-white" />
+                              <div className="absolute -top-1 -right-1 w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
+                                <span className="text-[10px] text-white font-bold">{conversation.participants.length}</span>
+                              </div>
+                            </div>
                           ) : otherParticipant?.photoURL ? (
                             <img 
                               src={otherParticipant.photoURL} 
                               alt={otherParticipant.displayName}
-                              className="w-12 h-12 rounded-full object-cover"
+                              className="w-12 h-12 rounded-2xl object-cover"
                             />
                           ) : (
-                            <User className="w-6 h-6 text-white" />
+                            <div className="relative">
+                              <User className="w-6 h-6 text-white" />
+                              <div className="absolute -top-1 -right-1 w-3 h-3 bg-gradient-to-r from-purple-400 to-pink-500 rounded-full animate-pulse"></div>
+                            </div>
                           )}
                         </div>
                         
-                        {/* Status online */}
+                        {/* Status online PREMIUM */}
                         {!conversation.isGroup && onlineUsers.has(otherParticipant?.id) && (
-                          <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#0D0C0C]" />
+                          <div className="absolute bottom-0 right-0 w-4 h-4 bg-green-500 rounded-full border-2 border-[#0D0C0C] flex items-center justify-center">
+                            <div className="w-2 h-2 bg-white rounded-full animate-ping"></div>
+                          </div>
+                        )}
+                        
+                        {/* Indicador de mensagens não lidas */}
+                        {unreadCount > 0 && (
+                          <div className="absolute -top-1 -left-1 w-5 h-5 bg-gradient-to-r from-[#FF2C68] to-pink-500 rounded-full border-2 border-[#0D0C0C] flex items-center justify-center">
+                            <span className="text-[10px] text-white font-bold">
+                              {unreadCount > 9 ? '9+' : unreadCount}
+                            </span>
+                          </div>
                         )}
                       </div>
 
                       {/* Info da conversa */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <h3 className="text-white font-medium truncate">
-                            {conversation.isGroup 
-                              ? conversation.name 
-                              : otherParticipant?.displayName || otherParticipant?.email || 'Usuário'
-                            }
-                          </h3>
-                          <div className="flex items-center space-x-2">
-                            <span className="text-white/40 text-xs">
-                              {formatTime(conversation.lastMessageAt)}
-                            </span>
-                            {unreadCount > 0 && (
-                              <div className="bg-[#FF2C68] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                                {unreadCount > 9 ? '9+' : unreadCount}
-                              </div>
-                            )}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                              <h3 className="text-white font-medium truncate">
+                                {conversation.isGroup 
+                                  ? `👥 ${conversation.name}` 
+                                  : `💬 ${otherParticipant?.displayName || otherParticipant?.email || 'Usuário'}`
+                                }
+                              </h3>
+                              {conversation.isGroup && conversation.admins?.includes(user.uid) && (
+                                <Crown className="w-3 h-3 text-yellow-500" title="Admin do grupo" />
+                              )}
+                              {!conversation.isGroup && onlineUsers.has(otherParticipant?.id) && (
+                                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" title="Online" />
+                              )}
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <span className="text-white/40 text-xs flex items-center space-x-1">
+                                <Clock className="w-3 h-3" />
+                                <span>{formatTime(conversation.lastMessageAt)}</span>
+                              </span>
+                              {conversation.isGroup && (
+                                <div className="bg-blue-500/20 text-blue-400 text-[10px] px-2 py-1 rounded-full">
+                                  {conversation.participants.length} 👥
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
                         <p className="text-white/60 text-sm truncate">
@@ -975,38 +1112,94 @@ export default function ChatInterno() {
               </div>
             )}
 
-            {/* Input de mensagem */}
-            <div className="p-4 border-t border-[#FF2C68]/30">
+            {/* Input de mensagem PREMIUM */}
+            <div className="p-4 border-t border-[#FF2C68]/30 bg-gradient-to-r from-[#0D0C0C] to-purple-900/10">
+              {/* Barra de ferramentas */}
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center space-x-2">
+                  <motion.button
+                    className="p-2 bg-blue-500/20 text-blue-400 rounded-lg hover:bg-blue-500/30 transition-all"
+                    title="📎 Anexar arquivo"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={uploadingFile}
+                  >
+                    {uploadingFile ? (
+                      <div className="w-4 h-4 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
+                    ) : (
+                      <Paperclip className="w-4 h-4" />
+                    )}
+                  </motion.button>
+                  
+                  <motion.button
+                    className="p-2 bg-green-500/20 text-green-400 rounded-lg hover:bg-green-500/30 transition-all"
+                    title="📷 Enviar imagem"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Camera className="w-4 h-4" />
+                  </motion.button>
+                  
+                  <motion.button
+                    className="p-2 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500/30 transition-all"
+                    title="🎤 Gravar áudio"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <Mic className="w-4 h-4" />
+                  </motion.button>
+                  
+                  <motion.button
+                    className="p-2 bg-amber-500/20 text-amber-400 rounded-lg hover:bg-amber-500/30 transition-all"
+                    title="📍 Localização"
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    <MapPin className="w-4 h-4" />
+                  </motion.button>
+                </div>
+                
+                <div className="flex items-center space-x-2">
+                  <div className="bg-[#0D0C0C]/30 px-3 py-1 rounded-full text-white/60 text-xs flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span>🟢 Conectado</span>
+                  </div>
+                </div>
+              </div>
+              
               <div className="flex items-end space-x-3">
-                {/* Botão de anexo */}
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploadingFile}
-                  className="p-3 bg-[#0D0C0C]/50 text-white/60 hover:text-white rounded-lg transition-colors disabled:opacity-50"
-                >
-                  {uploadingFile ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <Paperclip className="w-5 h-5" />
-                  )}
-                </button>
 
                 {/* Campo de texto */}
-                <div className="flex-1 relative">
-                  <input
-                    ref={messageInputRef}
-                    type="text"
-                    value={newMessage}
-                    onChange={(e) => setNewMessage(e.target.value)}
-                    onKeyPress={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        sendMessage();
-                      }
-                    }}
-                    placeholder="Digite uma mensagem..."
-                    className="w-full px-4 py-3 pr-12 bg-[#0D0C0C]/50 border border-[#FF2C68]/30 rounded-lg text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none transition-colors"
-                  />
+                {/* Campo de texto PREMIUM */}
+                <div className="flex-1 relative group">
+                  <div className="relative">
+                    <input
+                      ref={messageInputRef}
+                      type="text"
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          sendMessage();
+                        }
+                      }}
+                      placeholder="✍️ Digite sua mensagem aqui... (Enter para enviar)"
+                      className="w-full px-4 py-4 pr-16 bg-gradient-to-r from-[#0D0C0C]/60 to-purple-900/20 border border-[#FF2C68]/30 rounded-2xl text-white placeholder-white/40 focus:border-[#FF2C68] focus:outline-none focus:ring-2 focus:ring-[#FF2C68]/20 transition-all resize-none"
+                    />
+                    
+                    {/* Indicador de digitação */}
+                    {newMessage && (
+                      <div className="absolute bottom-1 left-4">
+                        <div className="flex items-center space-x-1">
+                          <div className="w-1 h-1 bg-[#FF2C68] rounded-full animate-bounce"></div>
+                          <div className="w-1 h-1 bg-[#FF2C68] rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                          <div className="w-1 h-1 bg-[#FF2C68] rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
 
                   {/* Botão emoji */}
                   <button
@@ -1033,14 +1226,30 @@ export default function ChatInterno() {
                   )}
                 </div>
 
-                {/* Botão enviar */}
-                <button
+                {/* Botão enviar PREMIUM */}
+                <motion.button
                   onClick={() => sendMessage()}
                   disabled={!newMessage.trim() && !uploadingFile}
-                  className="p-3 bg-[#FF2C68] hover:bg-[#FF2C68]/80 disabled:bg-gray-500 text-white rounded-lg transition-colors disabled:opacity-50"
+                  className={`p-3 rounded-xl font-medium transition-all duration-300 ${
+                    newMessage.trim() 
+                      ? 'bg-gradient-to-r from-[#FF2C68] to-pink-600 hover:from-[#FF2C68]/80 hover:to-pink-600/80 text-white shadow-lg shadow-[#FF2C68]/25' 
+                      : 'bg-gray-500/20 text-gray-400 cursor-not-allowed'
+                  }`}
+                  title={newMessage.trim() ? '🚀 Enviar mensagem' : '📝 Digite algo primeiro'}
+                  whileHover={newMessage.trim() ? { scale: 1.05, rotate: 2 } : {}}
+                  whileTap={newMessage.trim() ? { scale: 0.95 } : {}}
                 >
-                  <Send className="w-5 h-5" />
-                </button>
+                  {uploadingFile ? (
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  ) : newMessage.trim() ? (
+                    <div className="flex items-center space-x-2">
+                      <Send className="w-5 h-5" />
+                      <span className="text-sm">Enviar</span>
+                    </div>
+                  ) : (
+                    <Send className="w-5 h-5" />
+                  )}
+                </motion.button>
               </div>
             </div>
 
