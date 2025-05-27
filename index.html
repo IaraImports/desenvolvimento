@@ -87,100 +87,29 @@
         });
 
         // 📱 Detectar instalação PWA
-        let deferredPrompt;
-        let installButton = null;
-
-        // Função para criar botão de instalação
-        function createInstallButton(isIOS = false) {
-          if (installButton) return; // Evitar duplicar
-          
-          installButton = document.createElement('div');
-          installButton.innerHTML = `
-            <div id="install-btn" style="
-              position: fixed;
-              bottom: 20px;
-              right: 20px;
-              z-index: 10000;
-              background: linear-gradient(135deg, #FF2C68, #FF6B9D);
-              color: white;
-              border: none;
-              padding: 18px 28px;
-              border-radius: 35px;
-              font-weight: bold;
-              box-shadow: 0 8px 25px rgba(255, 44, 104, 0.5);
-              cursor: pointer;
-              transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-              font-family: 'Inter', Arial, sans-serif;
-              font-size: 14px;
-              text-align: center;
-              max-width: 220px;
-              animation: fadeInUp 0.5s ease-out, pulse 3s infinite 1s;
-              border: 2px solid rgba(255, 255, 255, 0.2);
-            " onclick="handleInstallClick()" onmouseover="this.style.transform='scale(1.05) translateY(-2px)'" onmouseout="this.style.transform='scale(1) translateY(0)'">"
-              📱 ${isIOS ? 'Adicionar à Tela Inicial' : 'Instalar App'}
-              <div style="font-size: 12px; margin-top: 5px; opacity: 0.9;">
-                ${isIOS ? 'Toque em ⬆️ → Adicionar' : 'Clique para instalar'}
-              </div>
-            </div>
-          `;
-          
-          document.body.appendChild(installButton);
-        }
-
-        // Função global para lidar com instalação
-        window.handleInstallClick = () => {
-          if (deferredPrompt) {
-            deferredPrompt.prompt();
-            deferredPrompt.userChoice.then((choiceResult) => {
-              if (choiceResult.outcome === 'accepted') {
-                console.log('✅ PWA instalado');
-              }
-              deferredPrompt = null;
-            });
-          } else {
-            // Detectar iOS
-            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-            
-            // Para iOS, mostrar instruções mais detalhadas
-            const instructions = isIOS ? 
-              'Para instalar no iPhone/iPad:\n\n1. Toque no botão de compartilhar ⬆️ (na barra inferior)\n2. Role para baixo e selecione "Adicionar à Tela de Início"\n3. Toque em "Adicionar" no canto superior direito\n\nO app aparecerá na sua tela inicial!' :
-              'Para instalar:\n\n1. Abra o menu do navegador (⋮)\n2. Selecione "Adicionar à tela inicial" ou "Instalar app"\n3. Confirme a instalação\n\nO app será instalado no seu dispositivo!';
-            
-            alert(instructions);
-          }
-        };
+        window.deferredPrompt = null;
 
         window.addEventListener('beforeinstallprompt', (e) => {
           e.preventDefault();
-          deferredPrompt = e;
-          console.log('📱 PWA pode ser instalado');
-          createInstallButton(false);
+          window.deferredPrompt = e;
+          console.log('📱 PWA pode ser instalado - prompt disponível!');
+          console.log('🔍 Navegador:', navigator.userAgent);
+          console.log('🖥️ Plataforma:', navigator.platform);
         });
 
-        // Para iOS e dispositivos que não disparam beforeinstallprompt
+        // Debug para verificar se os critérios de PWA estão sendo atendidos
         window.addEventListener('load', () => {
-          setTimeout(() => {
-            // Detectar iOS
-            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-            // Detectar se é standalone (já instalado)
-            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
-            
-            // Só não mostrar se já estiver em modo standalone (já instalado)
-            if (!isStandalone && !deferredPrompt) {
-              if (isIOS) {
-                createInstallButton(true);
-              } else {
-                // Para Android sem beforeinstallprompt
-                createInstallButton(false);
-              }
-            }
-          }, 2000); // Aguardar 2 segundos para aparecer mais rápido
+          console.log('🔍 Debug PWA:');
+          console.log('- Service Worker:', 'serviceWorker' in navigator);
+          console.log('- Manifest:', document.querySelector('link[rel="manifest"]') ? '✅' : '❌');
+          console.log('- HTTPS:', location.protocol === 'https:' || location.hostname === 'localhost');
+          console.log('- Display mode:', window.matchMedia('(display-mode: standalone)').matches ? 'standalone' : 'browser');
         });
 
         // 📱 Detectar quando foi instalado
         window.addEventListener('appinstalled', () => {
           console.log('🎉 PWA foi instalado com sucesso!');
-          deferredPrompt = null;
+          window.deferredPrompt = null;
           
           // Tentar forçar orientação paisagem
           if (screen.orientation && screen.orientation.lock) {

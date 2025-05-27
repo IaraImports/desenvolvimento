@@ -245,6 +245,79 @@ export default function Login() {
                   Esqueceu sua senha?
                 </a>
               </motion.div>
+
+              {/* Botão de instalação PWA */}
+              <motion.div 
+                className="text-center mt-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+              >
+                <button
+                  onClick={() => {
+                    // Verificar se é standalone (já instalado)
+                    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+                    
+                    if (isStandalone) {
+                      alert('App já está instalado! 🎉');
+                      return;
+                    }
+                    
+                    // Tentar usar o prompt nativo do navegador
+                    if (window.deferredPrompt) {
+                      window.deferredPrompt.prompt();
+                      window.deferredPrompt.userChoice.then((choiceResult) => {
+                        if (choiceResult.outcome === 'accepted') {
+                          console.log('✅ PWA instalado');
+                          alert('App instalado com sucesso! 🎉\nVerifique sua tela inicial.');
+                        } else {
+                          console.log('❌ Instalação cancelada');
+                        }
+                        window.deferredPrompt = null;
+                      });
+                      return;
+                    }
+                    
+                    // Detectar ambiente e mostrar instruções específicas
+                    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+                    const isAndroid = /Android/.test(navigator.userAgent);
+                    const isDesktop = !isIOS && !isAndroid;
+                    const isChrome = /Chrome/.test(navigator.userAgent);
+                    const isFirefox = /Firefox/.test(navigator.userAgent);
+                    const isEdge = /Edg/.test(navigator.userAgent);
+                    
+                    let instructions;
+                    
+                    if (isDesktop) {
+                      if (isChrome || isEdge) {
+                        instructions = `Para instalar no ${isEdge ? 'Edge' : 'Chrome'} (PC):\n\n1. Clique nos 3 pontos (⋮) no canto superior direito\n2. Procure por "Instalar IARA HUB" ou "Aplicativos"\n3. Clique em "Instalar"\n\nOu pressione Ctrl+Shift+I, vá em Application > Manifest > Install`;
+                      } else if (isFirefox) {
+                        instructions = 'Firefox Desktop não suporta instalação de PWA.\n\nRecomendamos usar Chrome ou Edge para instalar o app.\n\nOu continue usando pelo navegador! 🌐';
+                      } else {
+                        instructions = 'Para instalar no PC:\n\n1. Use Chrome ou Edge\n2. Clique nos 3 pontos (⋮)\n3. Procure "Instalar app" ou "Aplicativos"\n4. Clique em "Instalar"';
+                      }
+                    } else if (isIOS) {
+                      instructions = 'Para instalar no iPhone/iPad:\n\n1. Toque no botão de compartilhar ⬆️ (na barra inferior)\n2. Role para baixo e selecione "Adicionar à Tela de Início"\n3. Toque em "Adicionar" no canto superior direito\n\nO app aparecerá na sua tela inicial!';
+                    } else if (isAndroid) {
+                      instructions = 'Para instalar no Android:\n\n1. Toque nos 3 pontos (⋮) no canto superior direito\n2. Selecione "Adicionar à tela inicial" ou "Instalar app"\n3. Confirme tocando em "Instalar"\n\nO app será instalado no seu dispositivo!';
+                    } else {
+                      instructions = 'Para instalar:\n\nUse Chrome, Edge ou outro navegador compatível.\nProcure pela opção "Instalar app" no menu do navegador.';
+                    }
+                    
+                    alert(instructions);
+                  }}
+                  className="group relative px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white text-sm font-medium rounded-xl transition-all duration-300 transform hover:scale-105 hover:shadow-lg hover:shadow-primary-500/25 overflow-hidden"
+                >
+                  <span className="relative z-10 flex items-center justify-center">
+                    📱 {window.deferredPrompt ? 'Instalar App' : 'Como Instalar'}
+                  </span>
+                  
+                  {/* Efeito shimmer */}
+                  <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent transform -skew-x-12 translate-x-[-100%] group-hover:translate-x-[200%] transition-transform duration-1000" />
+                  </div>
+                </button>
+              </motion.div>
             </motion.form>
           </motion.div>
         </div>
